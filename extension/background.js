@@ -240,6 +240,22 @@ async function prepareImage(blob) {
   };
 }
 
+function withTimeout(promise, ms) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("image-timeout")), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      }
+    );
+  });
+}
+
 async function fetchAndPrepare(src, signal) {
   const imgRes = await fetch(src, {
     credentials: "omit",
@@ -301,7 +317,7 @@ async function scoreImages(msg) {
 
   try {
     const prepared = await Promise.allSettled(
-      missing.map((item) => fetchAndPrepare(item.src, controller.signal))
+      missing.map((item) => withTimeout(fetchAndPrepare(item.src, controller.signal), 6000))
     );
 
     const payload = [];
