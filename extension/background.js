@@ -77,7 +77,10 @@ async function scorePage(msg) {
       blur: Boolean(data.blur)
     };
 
-    if (verdict.blur) pending.pages += 1;
+    if (verdict.blur) {
+      pending.pages += 1;
+      scheduleFlush();
+    }
 
     if (pageCache.size >= CACHE_LIMIT) pageCache.clear();
     pageCache.set(key, verdict);
@@ -95,6 +98,11 @@ async function scorePage(msg) {
 
 const pending = { pages: 0, images: 0 };
 let flushTimer = null;
+
+function scheduleFlush() {
+  clearTimeout(flushTimer);
+  flushTimer = setTimeout(flushStats, 1200);
+}
 
 async function flushStats() {
   if (!pending.pages && !pending.images) return;
@@ -126,8 +134,7 @@ async function handle(msg) {
 
     case "record":
       pending.images += msg.imagesHidden || 0;
-      clearTimeout(flushTimer);
-      flushTimer = setTimeout(flushStats, 1200);
+      scheduleFlush();
       return { ok: true };
 
     case "setSettings": {

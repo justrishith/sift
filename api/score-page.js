@@ -3,9 +3,9 @@
 
 const MODELS = [
   process.env.GEMINI_MODEL,
-  "gemini-2.5-flash",
-  "gemini-2.0-flash",
-  "gemini-flash-latest",
+  "gemini-3.1-flash-lite",
+  "gemini-3.5-flash-lite",
+  "gemini-flash-lite-latest",
 ].filter(Boolean);
 
 const PROMPT = `You classify news article text for a tool that protects older readers from AI-generated slop.

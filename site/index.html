@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sift — Blur AI-generated images before they fool you</title>
+<title>Sift — Fake pics? Not on my watch.</title>
 <meta name="description" content="Sift is a Chrome extension that blurs AI-generated images in news articles and lets the reader reveal them one at a time.">
 <meta name="theme-color" content="#f4efff">
 <link rel="icon" href="flower.svg" type="image/svg+xml">
@@ -17,7 +17,7 @@
 <header class="topbar">
   <div class="wrap topbar-inner">
     <a class="wordmark" href="index.html" aria-label="Sift home">
-      <img class="brand-mark" src="flower.svg" alt="" width="24" height="24">
+      <img class="brand-mark" src="flower.svg" alt="" width="26" height="26">
       <span>sift<i class="wordmark-dot">.</i></span>
     </a>
     <nav class="topnav" aria-label="Primary">
@@ -28,38 +28,58 @@
   </div>
 </header>
 
-<section class="hero">
-  <div class="hero-orbs" aria-hidden="true">
-    <div class="orb-glow"></div>
-    <div class="orb orb-main">
-      <img src="flower.svg" alt="">
-    </div>
-    <div class="orb orb-chip"></div>
-    <div class="hero-grid-lines"></div>
-  </div>
+<main>
 
+<section class="hero">
+  <div class="hero-grid-lines" aria-hidden="true"></div>
   <div class="wrap hero-grid">
     <div class="hero-copy">
-      <span class="eyebrow"><i class="eyebrow-dot"></i> AI image shield</span>
-      <h1>Blur the fake.<br>Keep the reader in&nbsp;control.</h1>
+      <span class="eyebrow"><i class="eyebrow-dot"></i> a very polite AI filter</span>
+      <h1><span class="grad">Fake pics?</span><br>Not on my watch.</h1>
       <p class="lede">
-        Sift reads the article, decides whether it looks machine-made, and blurs its
-        images before they can mislead anyone. One tap reveals them. Nothing is removed.
+        Sift is a Chrome extension with one job: read the article, sniff out the AI slop,
+        and tuck its pictures behind a friendly blur. Tap one to peek. Nothing gets deleted.
       </p>
       <div class="hero-actions">
         <a class="btn btn-primary" href="slop.html">See it block a slop page</a>
         <a class="btn btn-ghost" href="article.html">Read a clean article</a>
       </div>
-      <p class="hero-note">Gemini reads the text, never your images. The key stays on the server.</p>
+      <p class="hero-note">Gemini reads the text, never your images · the key stays on the server</p>
+    </div>
+
+    <div class="hero-art" aria-hidden="true">
+      <div class="orb-glow"></div>
+      <div class="orb orb-main"></div>
+      <div class="orb orb-chip"></div>
+      <img class="mascot" src="monster.svg" alt="">
+      <div class="speech">i'll guard the pics</div>
+      <span class="spark spark-a">✦</span>
+      <span class="spark spark-b">✦</span>
+      <span class="spark spark-c">✿</span>
     </div>
   </div>
 </section>
 
+<div class="marquee" aria-hidden="true">
+  <div class="marquee-track">
+    <span>real photos stay real</span><i>✿</i>
+    <span>fakes get blurred</span><i>✿</i>
+    <span>tap to peek</span><i>✿</i>
+    <span>nothing gets deleted</span><i>✿</i>
+    <span>real photos stay real</span><i>✿</i>
+    <span>fakes get blurred</span><i>✿</i>
+    <span>tap to peek</span><i>✿</i>
+    <span>nothing gets deleted</span><i>✿</i>
+  </div>
+</div>
+
 <section class="section" id="how">
   <div class="wrap">
-    <div class="section-head">
-      <span class="kicker">How it works</span>
-      <h2 class="section-title">One verdict per article, not per image</h2>
+    <div class="section-head-row">
+      <div>
+        <span class="kicker">how it works</span>
+        <h2 class="section-title">One verdict per article.<br>Zero extra work for you.</h2>
+      </div>
       <p class="section-sub">
         Classifying every image is slow and expensive. Sift classifies the page once,
         then acts on every picture inside it.
@@ -80,7 +100,7 @@
       <div class="step">
         <span class="step-num">03</span>
         <h3>Blur</h3>
-        <p>If the page is flagged, every content image blurs in place. The reader reveals what they choose.</p>
+        <p>If the page is flagged, every content image gets a soft lilac blur. The reader reveals what they choose.</p>
       </div>
     </div>
   </div>
@@ -88,27 +108,40 @@
 
 <section class="section section-alt" id="try">
   <div class="wrap">
-    <div class="section-head">
-      <span class="kicker">The test</span>
-      <h2 class="section-title">Two pages, one extension</h2>
+    <div class="section-head-row">
+      <div>
+        <span class="kicker">the test</span>
+        <h2 class="section-title">Two pages. One extension.</h2>
+      </div>
       <p class="section-sub">
         Sift runs on both. It should blur one and leave the other completely alone.
+        Same code, no hardcoded selectors.
       </p>
     </div>
 
     <div class="test-grid">
       <a class="test-card" href="slop.html">
-        <span class="tag"><i class="tag-dot"></i> Should blur</span>
-        <h3>“Secret AI Money Glitch Banks Don’t Want You To Know About”</h3>
-        <p>A fabricated, machine-written page. Sift flags it and blurs all four images.</p>
-        <span class="card-arrow" aria-hidden="true">→</span>
+        <div class="card-media">
+          <img src="img/slop-hero.jpg" alt="A pile of one-dollar bills" loading="lazy">
+          <span class="media-chip chip-blur"><i class="tag-dot"></i> should blur</span>
+        </div>
+        <div class="card-body">
+          <h3>“Secret AI Money Glitch Banks Don’t Want You To Know About”</h3>
+          <p>A fabricated, machine-written page. Sift flags it and blurs all four photos.</p>
+          <span class="card-arrow" aria-hidden="true">→</span>
+        </div>
       </a>
 
       <a class="test-card" href="article.html">
-        <span class="tag tag-neutral"><i class="tag-dot"></i> Should stay sharp</span>
-        <h3>“Tech Billionaire’s AI Trading Fund Vanishes After $400 Million Raised”</h3>
-        <p>Reported prose with named sources. Sift leaves it untouched.</p>
-        <span class="card-arrow" aria-hidden="true">→</span>
+        <div class="card-media">
+          <img src="img/article-hero.jpg" alt="Glass office towers seen from below" loading="lazy">
+          <span class="media-chip chip-clear"><i class="tag-dot"></i> stays sharp</span>
+        </div>
+        <div class="card-body">
+          <h3>“Tech Billionaire’s AI Trading Fund Vanishes After $400 Million Raised”</h3>
+          <p>Reported prose with named sources. Sift leaves every photo untouched.</p>
+          <span class="card-arrow" aria-hidden="true">→</span>
+        </div>
       </a>
     </div>
   </div>
@@ -116,22 +149,69 @@
 
 <section class="section">
   <div class="wrap">
-    <div class="claim">
-      <span class="kicker">Scope</span>
-      <h2>What Sift does not claim</h2>
-      <p>
-        Gemini classifies text, not pixels. Sift catches AI-generated articles and slop pages.
-        A deepfake planted on a trustworthy publisher is a separate problem, and the interface
-        never pretends otherwise.
+    <div class="section-head-row">
+      <div>
+        <span class="kicker">the feeling</span>
+        <h2 class="section-title">A softer kind of shield.</h2>
+      </div>
+      <p class="section-sub">
+        No scary warnings, no missing layout, no lectures. Just a flower that hides the
+        questionable stuff until you ask.
       </p>
+    </div>
+
+    <div class="showcase" data-showcase>
+      <figure class="shot">
+        <div class="shot-frame">
+          <img src="img/slop-mansion.jpg" alt="A modern house at dusk" loading="lazy">
+          <div class="shot-cover">
+            <img src="flower.svg" alt="" width="40" height="40">
+            <strong>sift hid this one</strong>
+            <span>tap to peek</span>
+          </div>
+        </div>
+        <figcaption><b>Flagged.</b> Every picture gets tucked behind the same friendly blur.</figcaption>
+      </figure>
+
+      <figure class="shot">
+        <div class="shot-frame">
+          <img src="img/article-trading.jpg" alt="A market chart trending downward" loading="lazy">
+        </div>
+        <figcaption><b>Editorial.</b> Real reporting stays exactly as the photographer shot it.</figcaption>
+      </figure>
+
+      <button class="pill-mock" type="button" data-reveal>
+        <img src="flower.svg" alt="" width="24" height="24">
+        <span class="pill-mock-label">1 picture hidden</span>
+        <span class="pill-mock-btn">Show them</span>
+      </button>
     </div>
   </div>
 </section>
 
+<section class="section">
+  <div class="wrap">
+    <div class="claim">
+      <div class="claim-copy">
+        <span class="kicker">the fine print</span>
+        <h2>What Sift does not claim</h2>
+        <p>
+          Gemini classifies text, not pixels. Sift catches AI-generated articles and slop pages.
+          A deepfake planted on a trustworthy publisher is a separate problem, and the interface
+          never pretends otherwise.
+        </p>
+      </div>
+      <img class="claim-mascot" src="monster.svg" alt="" aria-hidden="true">
+    </div>
+  </div>
+</section>
+
+</main>
+
 <footer class="site-foot">
   <div class="wrap foot-grid">
     <a class="wordmark foot-wordmark" href="index.html">
-      <img class="brand-mark" src="flower.svg" alt="" width="22" height="22">
+      <img class="brand-mark" src="flower.svg" alt="" width="24" height="24">
       <span>sift<i class="wordmark-dot">.</i></span>
     </a>
     <p>Sift demo content. Not a real publication.</p>
@@ -142,6 +222,21 @@
     </nav>
   </div>
 </footer>
+
+<script>
+  const showcase = document.querySelector("[data-showcase]");
+  const reveal = document.querySelector("[data-reveal]");
+  if (showcase && reveal) {
+    reveal.addEventListener("click", () => {
+      const open = showcase.classList.toggle("is-revealed");
+      reveal.querySelector(".pill-mock-label").textContent = open
+        ? "1 picture revealed"
+        : "1 picture hidden";
+      reveal.querySelector(".pill-mock-btn").textContent = open ? "Hide it" : "Show them";
+      reveal.setAttribute("aria-pressed", String(open));
+    });
+  }
+</script>
 
 </body>
 </html>
