@@ -1,6 +1,6 @@
 # Sift
 
-Sift blurs AI-generated images in news articles and lets the reader reveal them one at a time.
+Sift blurs AI-generated images across the web and lets the reader reveal them one at a time.
 
 Built for older readers who are being targeted by AI slop and deepfake scam ads.
 
@@ -10,17 +10,24 @@ Built for older readers who are being targeted by AI slop and deepfake scam ads.
 
 ## How it works
 
+Sift has two detection paths:
+
 ```
-article opens
-   └─ content script finds the article and extracts its text
-        └─ one request to the scoring endpoint
-             └─ Gemini classifies: synthetic / content_farm / editorial
-                  └─ if flagged, every content image is blurred in place
-                       └─ "4 pictures hidden  [Show them]"
+article page
+   └─ content script extracts the article text
+        └─ /api/score-page asks Gemini whether the page is slop
+             └─ if flagged, every content image gets a Sift cover
+
+any other page (Google Images, YouTube, a news homepage)
+   └─ images near the viewport are sent one at a time
+        └─ /api/score-image asks Gemini whether the pixels look AI-generated
+             └─ that image gets a Sift cover
 ```
 
-One model call per **article**, not per image. That keeps it fast and cheap, and it means the
-blur decision is explainable: the page was judged, not each picture.
+A blocked image is never removed. It gets a frosted purple cover with a pulsing flower orb
+and a **Blocked by Sift** badge in the corner. Clicking the cover reveals the picture and
+removes the cover. The first click can never follow the link behind the image, and the same
+guard covers keyboard activation.
 
 The Gemini key lives in a server-side environment variable on Vercel. It never enters the
 extension bundle, so it cannot be extracted from a `.crx`.
@@ -34,23 +41,24 @@ extension bundle, so it cannot be extracted from a `.crx`.
 3. Click **Load unpacked** and select the `extension` folder
 4. Pin Sift to the toolbar
 
-The toolbar popup shows the on/off switch and how many pictures Sift has blurred this week.
+The toolbar popup shows the on/off switch and how many pictures Sift has blocked this week.
 
 ---
 
 ## Demo script (90 seconds)
 
 1. Open **https://sift-steel.vercel.app/slop.html**
-2. After 1–3 seconds all four images blur and the purple pill says **"4 pictures hidden"**.
-3. Click one blurred image once — it reveals, and the link behind it does **not** open.
+2. All four images get Sift covers and the purple pill says **"4 pictures hidden"**.
+3. Click one cover once — it reveals, and the link behind it does **not** open.
 4. Click the revealed image again — now it behaves normally.
-5. Press **Show them** — every image on the page reveals.
+5. Press **Show them** — every cover disappears.
 6. Open **https://sift-steel.vercel.app/article.html**. Real reporting stays sharp. That is the
    false-positive check.
-7. Open DevTools console to show the verdict: category, confidence, reasons.
+7. Open a **Google Images** search for something AI-generated, or a YouTube home page. Sift
+   scores the visible pictures and covers the ones that look synthetic.
 
-If the venue Wi-Fi dies, append `#sift-demo` to either URL to force the blur without a network
-call. The real classifier path is the one to demo when the network is up.
+If the venue Wi-Fi dies, append `#sift-demo` to either Sift URL to force the blur without a
+network call.
 
 ---
 
@@ -59,14 +67,15 @@ call. The real classifier path is the one to demo when the network is up.
 ```
 extension/
   manifest.json           MV3: two content scripts, no remote code
-  background.js           the only network call: article text -> verdict
+  background.js           page verdict + per-image vision calls
   content/page-scorer.js  article detection, text extraction, verdict event
-  content/image-shield.js blur, reveal, click-through blocking, pill
+  content/image-shield.js covers, reveal, click-through blocking, pill
   content/image-shield.css
   popup/popup.html        on/off + weekly count
   icons/                  purple flower mark
 api/
-  score-page.js           Vercel serverless function holding the Gemini key
+  score-page.js           article-text classifier
+  score-image.js          per-image vision classifier
 site/
   index.html              landing page
   slop.html               page that should blur
@@ -78,21 +87,23 @@ site/
 
 ## Honest limitations
 
-- **Gemini classifies text, not pixels.** It decides whether the *article* looks AI-generated.
-  A deepfake planted on a trustworthy publisher is not caught by this alone.
-- **One verdict per page.** If the article is flagged, all its content images blur, including
-  real ones. That is deliberate: the blur is reversible and the reader stays in control.
-- **Article pages only.** Sift scores pages that contain an `<article>`, or a `<main>` with at
-  least three paragraphs. YouTube and dashboards are not scored by this build.
+- **The image model judges pixels, and it can be wrong.** It is conservative by design; a
+  heavily compressed thumbnail may be missed. A wrong blur is reversible with one click.
+- **Only the first 8 visible images per page are scored**, and only images at least
+  180×120. That keeps the free tier usable and avoids scoring avatars, icons, and banners.
+- **Article pages are judged as a whole.** If the text is flagged, every content image is
+  covered, including real ones. That is deliberate: the cover is reversible.
+- **Sift fails open.** If an endpoint is down, times out, or hits quota, nothing is covered
+  and the page behaves normally.
 - **No teaching layer yet.** Reveal is one tap, with no explanation or quiz.
-- **Fails open.** If the endpoint is down or the key is missing, nothing is blurred and the page
-  behaves normally.
 
 ---
 
 ## Security notes
 
-- `.env` is gitignored; `.env.example` is the template.
-- The extension never sees the key. It only knows the `/api/score-page` URL.
-- Only the article title and text are sent to the endpoint. No URLs, cookies, or identifiers.
-- The endpoint caps input at 6,000 characters and caches verdicts in memory.
+- `.env` is gitignored; `.env.example` is the template. Production values live in Vercel.
+- The extension never sees the key. It only knows the two `/api/score-*` URLs.
+- Article text is capped at 6,000 characters. Images are downscaled to 512px before upload.
+- The server never fetches a URL supplied by a page; the extension fetches the image with its
+  own host permissions and sends bytes. That avoids server-side request forgery.
+- Both endpoints cache verdicts in memory and set CORS to `*` for the extension.

@@ -3,6 +3,9 @@
   "functions": {
     "api/score-page.js": {
       "maxDuration": 30
+    },
+    "api/score-image.js": {
+      "maxDuration": 30
     }
   }
 }

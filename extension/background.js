@@ -1,19 +1,27 @@
 /*
  * Sift — service worker
  * ---------------------
- * Owns exactly one network call: article text -> /api/score-page -> verdict.
+ * Two network calls, both server-side:
+ *   - scorePage:  article text -> /api/score-page  -> one verdict for the page
+ *   - scoreImage: one image    -> /api/score-image -> one verdict for the picture
+ *
  * The Gemini key lives on the server. It never enters this bundle.
  *
- * If the endpoint is down, scorePage returns { ok: false, blur: false } and
- * the page is left alone. Sift fails open on purpose: a broken classifier
- * must never break the reader's page.
+ * If either endpoint is down, the verdict is { blur: false } and the page is
+ * left alone. Sift fails open on purpose: a broken classifier must never
+ * break the reader's page.
  */
 
-const PROXY_URL = "https://sift-steel.vercel.app/api/score-page";
-const TIMEOUT_MS = 15000;
+const PAGE_URL = "https://sift-steel.vercel.app/api/score-page";
+const IMAGE_URL = "https://sift-steel.vercel.app/api/score-image";
+const PAGE_TIMEOUT_MS = 15000;
+const IMAGE_TIMEOUT_MS = 25000;
 const CACHE_LIMIT = 200;
+const IMAGE_CACHE_LIMIT = 500;
+const MAX_IMAGE_BYTES = 8_000_000;
 
 const pageCache = new Map();
+const imageCache = new Map();
 
 /* ------------------------------------------------------------------ */
 /* state                                                               */
@@ -42,7 +50,7 @@ async function getState() {
 }
 
 /* ------------------------------------------------------------------ */
-/* scoring                                                             */
+/* page scoring                                                        */
 /* ------------------------------------------------------------------ */
 
 async function scorePage(msg) {
@@ -55,10 +63,10 @@ async function scorePage(msg) {
   if (pageCache.has(key)) return pageCache.get(key);
 
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), PAGE_TIMEOUT_MS);
 
   try {
-    const res = await fetch(PROXY_URL, {
+    const res = await fetch(PAGE_URL, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ title, text }),
@@ -84,6 +92,103 @@ async function scorePage(msg) {
 
     if (pageCache.size >= CACHE_LIMIT) pageCache.clear();
     pageCache.set(key, verdict);
+    return verdict;
+  } catch (e) {
+    return { ok: false, blur: false, error: String((e && e.message) || e) };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* image scoring                                                       */
+/* ------------------------------------------------------------------ */
+
+function toBase64(buffer) {
+  const bytes = new Uint8Array(buffer);
+  const chunk = 0x2000;
+  let binary = "";
+
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
+
+/* Downscale before sending. Fewer tokens, smaller payload, same verdict. */
+async function prepareImage(blob) {
+  const bitmap = await createImageBitmap(blob);
+  const max = 512;
+  const scale = Math.min(1, max / Math.max(bitmap.width, bitmap.height));
+  const width = Math.max(1, Math.round(bitmap.width * scale));
+  const height = Math.max(1, Math.round(bitmap.height * scale));
+
+  const canvas = new OffscreenCanvas(width, height);
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(bitmap, 0, 0, width, height);
+  bitmap.close?.();
+
+  const out = await canvas.convertToBlob({ type: "image/jpeg", quality: 0.82 });
+  return {
+    mime: "image/jpeg",
+    data: toBase64(await out.arrayBuffer())
+  };
+}
+
+async function scoreImage(msg) {
+  const src = String(msg.src || "");
+  if (!/^https?:\/\//.test(src)) return { ok: false, blur: false, error: "bad-src" };
+  if (imageCache.has(src)) return imageCache.get(src);
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), IMAGE_TIMEOUT_MS);
+
+  try {
+    const imgRes = await fetch(src, {
+      credentials: "omit",
+      cache: "force-cache",
+      referrerPolicy: "no-referrer",
+      signal: controller.signal
+    });
+
+    if (!imgRes.ok) throw new Error(`image ${imgRes.status}`);
+
+    const blob = await imgRes.blob();
+    if (!/^image\//.test(blob.type)) throw new Error("not-an-image");
+    if (blob.size > MAX_IMAGE_BYTES) throw new Error("image-too-large");
+
+    let prepared;
+    try {
+      prepared = await prepareImage(blob);
+    } catch {
+      prepared = {
+        mime: /^image\/(png|jpeg|webp|gif)$/.test(blob.type) ? blob.type : "image/jpeg",
+        data: toBase64(await blob.arrayBuffer())
+      };
+    }
+
+    if (prepared.data.length > 3_000_000) throw new Error("image-too-large");
+
+    const res = await fetch(IMAGE_URL, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ image: prepared.data, mime: prepared.mime }),
+      signal: controller.signal
+    });
+
+    if (!res.ok) throw new Error(`vision ${res.status}`);
+
+    const data = await res.json();
+    const verdict = {
+      ok: true,
+      ai: Number(data.ai) || 0,
+      confidence: data.confidence || "low",
+      reasons: Array.isArray(data.reasons) ? data.reasons.slice(0, 3) : [],
+      blur: Boolean(data.blur)
+    };
+
+    if (imageCache.size >= IMAGE_CACHE_LIMIT) imageCache.clear();
+    imageCache.set(src, verdict);
     return verdict;
   } catch (e) {
     return { ok: false, blur: false, error: String((e && e.message) || e) };
@@ -131,6 +236,9 @@ async function handle(msg) {
 
     case "scorePage":
       return scorePage(msg);
+
+    case "scoreImage":
+      return scoreImage(msg);
 
     case "record":
       pending.images += msg.imagesHidden || 0;

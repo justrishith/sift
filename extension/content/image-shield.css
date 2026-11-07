@@ -3,11 +3,7 @@
 img.sift-blurred {
   filter: blur(18px) saturate(0.55) !important;
   cursor: pointer !important;
-  transition: filter 160ms ease;
-}
-
-img.sift-blurred:hover {
-  filter: blur(14px) saturate(0.65) !important;
+  transition: filter 180ms ease;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -16,7 +12,142 @@ img.sift-blurred:hover {
   }
 }
 
-/* The single reveal control, always in the same place. */
+/* ------------------------------------------------------------------ */
+/* the cover                                                           */
+/* ------------------------------------------------------------------ */
+
+.sift-cover {
+  position: absolute;
+  z-index: 2147483000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  overflow: hidden;
+  cursor: pointer;
+  background:
+    radial-gradient(120% 95% at 50% 38%, rgba(124, 58, 237, 0.22), transparent 62%),
+    rgba(18, 10, 36, 0.52);
+  -webkit-backdrop-filter: blur(10px) saturate(0.7);
+  backdrop-filter: blur(10px) saturate(0.7);
+}
+
+.sift-cover::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    115deg,
+    transparent 34%,
+    rgba(196, 181, 253, 0.16) 50%,
+    transparent 66%
+  );
+  transform: translateX(-110%);
+  animation: sift-sheen 3.4s ease-in-out infinite;
+}
+
+.sift-cover:focus-visible {
+  outline: 3px solid #ddd3fb;
+  outline-offset: 2px;
+}
+
+/* ------------------------------------------------------------------ */
+/* the orb                                                             */
+/* ------------------------------------------------------------------ */
+
+.sift-orb {
+  position: relative;
+  z-index: 1;
+  width: clamp(38px, 17%, 68px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 34% 28%, #f2ecff 0%, #c4b5fd 28%, #7c3aed 64%, #4c1d95 100%);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.4),
+    0 0 26px rgba(167, 139, 250, 0.6);
+  animation: sift-pulse 2.4s ease-in-out infinite;
+}
+
+.sift-orb img {
+  width: 56%;
+  height: 56%;
+  display: block;
+  object-fit: contain;
+  filter: drop-shadow(0 1px 2px rgba(27, 16, 51, 0.45));
+}
+
+/* ------------------------------------------------------------------ */
+/* corner badge                                                        */
+/* ------------------------------------------------------------------ */
+
+.sift-badge {
+  position: absolute;
+  z-index: 2;
+  top: 8px;
+  left: 8px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: rgba(27, 16, 51, 0.92);
+  color: #e9e2ff;
+  border: 1px solid #a78bfa;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  box-shadow: 0 2px 10px rgba(18, 10, 36, 0.35);
+}
+
+/* ------------------------------------------------------------------ */
+/* motion                                                              */
+/* ------------------------------------------------------------------ */
+
+@keyframes sift-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.4),
+      0 0 22px rgba(167, 139, 250, 0.55);
+  }
+  50% {
+    transform: scale(1.08);
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.55),
+      0 0 40px rgba(167, 139, 250, 0.9);
+  }
+}
+
+@keyframes sift-sheen {
+  0%,
+  55% {
+    transform: translateX(-110%);
+  }
+  100% {
+    transform: translateX(110%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sift-orb,
+  .sift-cover::after {
+    animation: none;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* the single reveal control                                           */
+/* ------------------------------------------------------------------ */
+
 .sift-pill {
   position: fixed;
   left: 50%;

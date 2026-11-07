@@ -1,31 +1,47 @@
 /*
  * Sift — image shield
  * -------------------
- * When the page is flagged, every content image is blurred in place and the
- * reader gets one plain control: "N pictures hidden — Show them".
+ * Two ways an image gets blocked:
+ *   1. the page is judged AI slop  -> every content image blurs at once
+ *   2. one image is judged AI      -> that image blurs on its own
  *
- * Design rules:
- *   - blur, never remove, so the layout never collapses
- *   - a blurred image cannot navigate anywhere on the first click
- *   - one tap reveals, a second tap behaves normally
- *   - lazy images below the fold are blurred too; they are never skipped
- *     just because they have not decoded yet
+ * Blocked images get a Sift cover: a frosted purple layer, a pulsing flower
+ * orb, and a "Blocked by Sift" badge in the corner. Clicking the cover
+ * reveals the picture and removes the cover. A first click can never follow
+ * the link behind the image.
  */
 
 (() => {
   "use strict";
 
-  const MIN_EDGE = 120;   // skip icons, avatars, sprites
-  const MAX_IMAGES = 120; // hard cap for infinite feeds
+  const BLUR_MIN_EDGE = 120;    // page verdict: skip icons, avatars, sprites
+  const SCORE_MIN_WIDTH = 180;  // per-image vision: thumbnails and up
+  const SCORE_MIN_HEIGHT = 120;
+  const MAX_BLUR_IMAGES = 120;
+  const MAX_SCORE_CALLS = 8;    // per page; keeps the free tier sane
+  const MAX_CONCURRENT = 2;
 
   const blurred = new Set();
+  const covers = new Map();
+  const positionedParents = new Map();
+  const scored = new WeakSet();
+  const queue = [];
 
+  let active = 0;
+  let scoreCalls = 0;
   let enabled = true;
   let flagged = false;
   let revealedAll = false;
   let hiddenCount = 0;
   let lastVerdict = null;
   let pill = null;
+  let iconUrl = "";
+
+  try {
+    iconUrl = chrome.runtime.getURL("icons/icon128.png");
+  } catch {
+    iconUrl = "";
+  }
 
   /* ------------------------------------------------------------------ */
   /* messaging                                                           */
@@ -94,6 +110,120 @@
   }
 
   /* ------------------------------------------------------------------ */
+  /* the cover                                                           */
+  /* ------------------------------------------------------------------ */
+
+  function positionParent(parent) {
+    const entry = positionedParents.get(parent);
+    if (entry) {
+      entry.count += 1;
+      return;
+    }
+
+    const prev = parent.style.position;
+    const changed = getComputedStyle(parent).position === "static";
+    if (changed) parent.style.position = "relative";
+    positionedParents.set(parent, { count: 1, prev, changed });
+  }
+
+  function unpositionParent(parent) {
+    const entry = positionedParents.get(parent);
+    if (!entry) return;
+
+    entry.count -= 1;
+    if (entry.count > 0) return;
+
+    if (entry.changed) parent.style.position = entry.prev;
+    positionedParents.delete(parent);
+  }
+
+  function positionCover(img) {
+    const entry = covers.get(img);
+    if (!entry) return;
+
+    const { cover, parent } = entry;
+    const rect = img.getBoundingClientRect();
+    const parentRect = parent.getBoundingClientRect();
+
+    cover.style.left = `${rect.left - parentRect.left + parent.scrollLeft}px`;
+    cover.style.top = `${rect.top - parentRect.top + parent.scrollTop}px`;
+    cover.style.width = `${rect.width}px`;
+    cover.style.height = `${rect.height}px`;
+  }
+
+  function addCover(img) {
+    if (covers.has(img)) return;
+
+    const parent = img.parentElement;
+    if (!parent) return;
+
+    const cover = document.createElement("div");
+    cover.className = "sift-cover";
+    cover.setAttribute("role", "button");
+    cover.tabIndex = 0;
+    cover.setAttribute("aria-label", "Blocked by Sift. Activate to reveal this picture.");
+
+    const badge = document.createElement("span");
+    badge.className = "sift-badge";
+    badge.textContent = "Blocked by Sift";
+
+    const orb = document.createElement("span");
+    orb.className = "sift-orb";
+    orb.setAttribute("aria-hidden", "true");
+
+    if (iconUrl) {
+      const icon = document.createElement("img");
+      icon.src = iconUrl;
+      icon.alt = "";
+      orb.appendChild(icon);
+    }
+
+    cover.append(badge, orb);
+
+    const reveal = (event) => {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      unblur(img);
+    };
+
+    cover.addEventListener("click", reveal, true);
+    cover.addEventListener(
+      "keydown",
+      (event) => {
+        if (event.key === "Enter" || event.key === " ") reveal(event);
+      },
+      true
+    );
+
+    positionParent(parent);
+    parent.appendChild(cover);
+
+    const observer = new ResizeObserver(() => positionCover(img));
+    observer.observe(img);
+
+    covers.set(img, { cover, parent, observer });
+    positionCover(img);
+  }
+
+  function removeCover(img) {
+    const entry = covers.get(img);
+    if (!entry) return;
+
+    entry.observer.disconnect();
+    entry.cover.remove();
+    unpositionParent(entry.parent);
+    covers.delete(img);
+  }
+
+  window.addEventListener(
+    "resize",
+    () => {
+      for (const img of covers.keys()) positionCover(img);
+    },
+    { passive: true }
+  );
+
+  /* ------------------------------------------------------------------ */
   /* blur / reveal                                                       */
   /* ------------------------------------------------------------------ */
 
@@ -115,6 +245,8 @@
       anchor.addEventListener("click", onGuardedAnchor, true);
       anchor.addEventListener("keydown", onGuardedAnchorKey, true);
     }
+
+    addCover(img);
 
     blurred.add(img);
     hiddenCount += 1;
@@ -152,6 +284,7 @@
     img.dataset.siftRevealed = "1";
     img.removeEventListener("click", onBlurredClick, true);
     img.removeAttribute("title");
+    removeCover(img);
 
     if (blurred.delete(img) && !revealedAll) {
       hiddenCount = Math.max(0, hiddenCount - 1);
@@ -160,7 +293,7 @@
   }
 
   /* ------------------------------------------------------------------ */
-  /* candidate selection                                                 */
+  /* page verdict                                                        */
   /* ------------------------------------------------------------------ */
 
   function isContentImage(img) {
@@ -177,41 +310,147 @@
 
     // An image that has not decoded yet (loading="lazy" below the fold)
     // reports naturalWidth 0 and a height of about 1px. It still has a
-    // real layout width, so judge it on width alone. Once it loads, the
-    // blur class is already applied.
-    if (img.naturalWidth === 0) return width >= MIN_EDGE;
+    // real layout width, so judge it on width alone.
+    if (img.naturalWidth === 0) return width >= BLUR_MIN_EDGE;
 
-    return width >= MIN_EDGE && height >= MIN_EDGE;
+    return width >= BLUR_MIN_EDGE && height >= BLUR_MIN_EDGE;
   }
 
   function blurAll(verdict) {
     let count = 0;
 
     for (const img of document.querySelectorAll("img")) {
-      if (count >= MAX_IMAGES) break;
+      if (count >= MAX_BLUR_IMAGES) break;
       if (!isContentImage(img)) continue;
       blurImage(img, verdict);
       count += 1;
     }
   }
 
-  /* Images added after the verdict (infinite scroll, lazy sections). */
+  /* ------------------------------------------------------------------ */
+  /* per-image vision                                                    */
+  /* ------------------------------------------------------------------ */
+
+  function isScorableImage(img) {
+    if (!(img instanceof HTMLImageElement)) return false;
+    if (scored.has(img)) return false;
+    if (img.dataset.siftBlurred === "1" || img.dataset.siftRevealed === "1") return false;
+    if (img.naturalWidth === 0) return false;
+
+    const rect = img.getBoundingClientRect();
+    const width = Math.max(img.naturalWidth, rect.width || 0);
+    const height = Math.max(img.naturalHeight, rect.height || 0);
+    if (width < SCORE_MIN_WIDTH || height < SCORE_MIN_HEIGHT) return false;
+
+    const src = img.currentSrc || img.src || "";
+    if (!/^https?:/.test(src)) return false;
+    if (/\.svg(\?|$)/i.test(src)) return false;
+
+    return true;
+  }
+
+  function observe(img) {
+    if (!enabled) return;
+    if (!(img instanceof HTMLImageElement)) return;
+    if (scored.has(img)) return;
+    if (img.dataset.siftBlurred === "1" || img.dataset.siftRevealed === "1") return;
+
+    io.observe(img);
+  }
+
+  function enqueue(img) {
+    if (!enabled || flagged) return;
+    if (!(img instanceof HTMLImageElement)) return;
+    if (scored.has(img)) return;
+    if (img.dataset.siftBlurred === "1" || img.dataset.siftRevealed === "1") return;
+
+    if (img.naturalWidth === 0) {
+      img.addEventListener("load", () => enqueue(img), { once: true });
+      return;
+    }
+
+    if (!isScorableImage(img)) return;
+    if (scoreCalls >= MAX_SCORE_CALLS) return;
+
+    scored.add(img);
+    scoreCalls += 1;
+    queue.push(img);
+    pump();
+  }
+
+  function pump() {
+    while (active < MAX_CONCURRENT && queue.length) {
+      const img = queue.shift();
+      active += 1;
+      scoreOne(img).finally(() => {
+        active -= 1;
+        pump();
+      });
+    }
+  }
+
+  async function scoreOne(img) {
+    if (!enabled || flagged) return;
+
+    const src = img.currentSrc || img.src || "";
+    if (!src) return;
+
+    const verdict = await send({
+      type: "scoreImage",
+      src,
+      alt: img.alt || "",
+      pageUrl: location.href
+    });
+
+    if (!verdict || !verdict.blur || flagged) return;
+    if (img.dataset.siftBlurred === "1" || img.dataset.siftRevealed === "1") return;
+
+    blurImage(img, verdict);
+  }
+
+  const io = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue;
+        io.unobserve(entry.target);
+        enqueue(entry.target);
+      }
+    },
+    { rootMargin: "300px" }
+  );
+
+  /* ------------------------------------------------------------------ */
+  /* observation                                                         */
+  /* ------------------------------------------------------------------ */
+
+  function scan(root) {
+    if (!enabled) return;
+    const scope = root && root.querySelectorAll ? root : document;
+    for (const img of scope.querySelectorAll("img")) observe(img);
+  }
+
   function watchDom() {
     const observer = new MutationObserver((mutations) => {
-      if (!flagged) return;
-
       for (const mutation of mutations) {
         for (const node of mutation.addedNodes) {
           if (node.nodeType !== 1) continue;
 
           if (node.tagName === "IMG") {
-            if (isContentImage(node)) blurImage(node, lastVerdict);
+            if (flagged) {
+              if (isContentImage(node)) blurImage(node, lastVerdict);
+            } else {
+              observe(node);
+            }
             continue;
           }
 
           if (!node.querySelectorAll) continue;
           for (const img of node.querySelectorAll("img")) {
-            if (isContentImage(img)) blurImage(img, lastVerdict);
+            if (flagged) {
+              if (isContentImage(img)) blurImage(img, lastVerdict);
+            } else {
+              observe(img);
+            }
           }
         }
       }
@@ -232,6 +471,7 @@
 
     flagged = true;
     lastVerdict = verdict;
+    queue.length = 0;
     blurAll(verdict);
   });
 
@@ -245,6 +485,7 @@
     if (!enabled) return;
 
     ensurePill();
+    scan(document);
     watchDom();
   }
 
