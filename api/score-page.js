@@ -17,7 +17,6 @@ Decide whether this reads like:
 
 Be conservative. Only use "synthetic" or "content_farm" with strong evidence.
 Never label a real news article as synthetic without clear signs.
-Give short, concrete reasons a non-technical person could understand.
 
 Return JSON only.`;
 
@@ -27,9 +26,8 @@ const SCHEMA = {
     slop: { type: "number", description: "0 to 1" },
     category: { type: "string", enum: ["synthetic", "content_farm", "editorial"] },
     confidence: { type: "string", enum: ["low", "medium", "high"] },
-    reasons: { type: "array", items: { type: "string" } },
   },
-  required: ["slop", "category", "confidence", "reasons"],
+  required: ["slop", "category", "confidence"],
 };
 
 const cache = new Map();

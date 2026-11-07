@@ -2,13 +2,18 @@
  * Sift — image shield
  * -------------------
  * Two ways an image gets blocked:
- *   1. the page is judged AI slop  -> every content image blurs at once
- *   2. one image is judged AI      -> that image blurs on its own
+ *   1. the page is judged AI slop  -> every content image gets a cover
+ *   2. one image is judged AI      -> that image gets a cover
  *
- * Blocked images get a Sift cover: a frosted purple layer, a pulsing flower
- * orb, and a "Blocked by Sift" badge in the corner. Clicking the cover
- * reveals the picture and removes the cover. A first click can never follow
- * the link behind the image.
+ * Blocked images get a soft lilac cover with a flower, a "blocked by sift"
+ * badge, and a "tap to peek" hint. Clicking a cover reveals that one picture.
+ * A first click can never follow the link behind the image.
+ *
+ * Only images that intersect the viewport are scored, so offscreen and
+ * lazy-loaded images are never fetched just to be judged. Vision calls are
+ * batched six at a time for speed.
+ *
+ * Sift fails open: no verdict means no blur.
  */
 
 (() => {
@@ -19,28 +24,35 @@
   const SCORE_MIN_HEIGHT = 120;
   const MAX_BLUR_IMAGES = 120;
   const MAX_SCORE_CALLS = 8;    // per page; keeps the free tier sane
-  const MAX_CONCURRENT = 2;
+  const BATCH_SIZE = 6;
+  const BATCH_DELAY_MS = 60;
 
-  const blurred = new Set();
   const covers = new Map();
   const positionedParents = new Map();
   const scored = new WeakSet();
-  const queue = [];
+  const pending = [];
 
-  let active = 0;
+  let batchTimer = null;
+  let flushing = false;
   let scoreCalls = 0;
   let enabled = true;
   let flagged = false;
-  let revealedAll = false;
-  let hiddenCount = 0;
+  let articleMode = false;
   let lastVerdict = null;
-  let pill = null;
-  let iconUrl = "";
+  let flowerUrl = "";
 
   try {
-    iconUrl = chrome.runtime.getURL("icons/icon128.png");
+    flowerUrl = chrome.runtime.getURL("icons/flower.svg");
   } catch {
-    iconUrl = "";
+    flowerUrl = "";
+  }
+
+  function flower() {
+    const img = document.createElement("img");
+    img.src = flowerUrl;
+    img.alt = "";
+    img.setAttribute("aria-hidden", "true");
+    return img;
   }
 
   /* ------------------------------------------------------------------ */
@@ -58,55 +70,6 @@
         resolve(null);
       }
     });
-  }
-
-  /* ------------------------------------------------------------------ */
-  /* pill                                                                */
-  /* ------------------------------------------------------------------ */
-
-  function ensurePill() {
-    if (pill) return pill;
-
-    pill = document.createElement("div");
-    pill.className = "sift-pill";
-    pill.setAttribute("role", "status");
-    pill.setAttribute("aria-live", "polite");
-
-    const label = document.createElement("span");
-    label.className = "sift-pill-label";
-
-    const button = document.createElement("button");
-    button.className = "sift-pill-btn";
-    button.type = "button";
-    button.textContent = "Show them";
-    button.addEventListener("click", revealAll);
-
-    pill.append(label, button);
-    document.documentElement.appendChild(pill);
-    return pill;
-  }
-
-  function updatePill() {
-    if (!pill) return;
-
-    if (hiddenCount === 0 || revealedAll) {
-      pill.classList.remove("sift-pill-visible");
-      return;
-    }
-
-    pill.querySelector(".sift-pill-label").textContent =
-      hiddenCount === 1 ? "1 picture hidden" : `${hiddenCount} pictures hidden`;
-    pill.classList.add("sift-pill-visible");
-  }
-
-  function revealAll() {
-    revealedAll = true;
-    hiddenCount = 0;
-
-    for (const img of [...blurred]) unblur(img);
-
-    updatePill();
-    send({ type: "record", imagesRevealed: 1 });
   }
 
   /* ------------------------------------------------------------------ */
@@ -149,6 +112,9 @@
     cover.style.top = `${rect.top - parentRect.top + parent.scrollTop}px`;
     cover.style.width = `${rect.width}px`;
     cover.style.height = `${rect.height}px`;
+
+    cover.classList.toggle("sift-cover-small", rect.width < 170 || rect.height < 140);
+    cover.classList.toggle("sift-cover-tiny", rect.width < 90 || rect.height < 70);
   }
 
   function addCover(img) {
@@ -164,21 +130,19 @@
     cover.setAttribute("aria-label", "Blocked by Sift. Activate to reveal this picture.");
 
     const badge = document.createElement("span");
-    badge.className = "sift-badge";
-    badge.textContent = "Blocked by Sift";
+    badge.className = "sift-cover-badge";
+    const badgeLabel = document.createElement("span");
+    badgeLabel.textContent = "blocked by sift";
+    badge.append(flower(), badgeLabel);
 
-    const orb = document.createElement("span");
-    orb.className = "sift-orb";
-    orb.setAttribute("aria-hidden", "true");
+    const mark = flower();
+    mark.className = "sift-cover-mark";
 
-    if (iconUrl) {
-      const icon = document.createElement("img");
-      icon.src = iconUrl;
-      icon.alt = "";
-      orb.appendChild(icon);
-    }
+    const hint = document.createElement("span");
+    hint.className = "sift-cover-hint";
+    hint.textContent = "tap to peek";
 
-    cover.append(badge, orb);
+    cover.append(badge, mark, hint);
 
     const reveal = (event) => {
       event.preventDefault();
@@ -210,7 +174,11 @@
     if (!entry) return;
 
     entry.observer.disconnect();
-    entry.cover.remove();
+    entry.cover.classList.add("sift-cover-out");
+    entry.cover.disabled = true;
+    const cover = entry.cover;
+    window.setTimeout(() => cover.remove(), 190);
+
     unpositionParent(entry.parent);
     covers.delete(img);
   }
@@ -247,12 +215,6 @@
     }
 
     addCover(img);
-
-    blurred.add(img);
-    hiddenCount += 1;
-    revealedAll = false;
-
-    updatePill();
     send({ type: "record", imagesHidden: 1, category: verdict && verdict.category });
   }
 
@@ -285,11 +247,6 @@
     img.removeEventListener("click", onBlurredClick, true);
     img.removeAttribute("title");
     removeCover(img);
-
-    if (blurred.delete(img) && !revealedAll) {
-      hiddenCount = Math.max(0, hiddenCount - 1);
-      updatePill();
-    }
   }
 
   /* ------------------------------------------------------------------ */
@@ -331,6 +288,20 @@
   /* per-image vision                                                    */
   /* ------------------------------------------------------------------ */
 
+  /*
+   * Article pages are judged once, as a whole, by page-scorer.js. Running
+   * vision on every image there would double the network work and fight
+   * the page verdict, so vision only runs on non-article pages.
+   */
+  function isArticlePage() {
+    const article = document.querySelector("article");
+    if (article && (article.innerText || "").trim().length >= 350) return true;
+
+    const main = document.querySelector("main");
+    if (!main || main.querySelectorAll("p").length < 3) return false;
+    return (main.innerText || "").trim().length >= 350;
+  }
+
   function isScorableImage(img) {
     if (!(img instanceof HTMLImageElement)) return false;
     if (scored.has(img)) return false;
@@ -350,7 +321,7 @@
   }
 
   function observe(img) {
-    if (!enabled) return;
+    if (!enabled || flagged || articleMode) return;
     if (!(img instanceof HTMLImageElement)) return;
     if (scored.has(img)) return;
     if (img.dataset.siftBlurred === "1" || img.dataset.siftRevealed === "1") return;
@@ -359,7 +330,7 @@
   }
 
   function enqueue(img) {
-    if (!enabled || flagged) return;
+    if (!enabled || flagged || articleMode) return;
     if (!(img instanceof HTMLImageElement)) return;
     if (scored.has(img)) return;
     if (img.dataset.siftBlurred === "1" || img.dataset.siftRevealed === "1") return;
@@ -374,38 +345,57 @@
 
     scored.add(img);
     scoreCalls += 1;
-    queue.push(img);
-    pump();
-  }
-
-  function pump() {
-    while (active < MAX_CONCURRENT && queue.length) {
-      const img = queue.shift();
-      active += 1;
-      scoreOne(img).finally(() => {
-        active -= 1;
-        pump();
-      });
-    }
-  }
-
-  async function scoreOne(img) {
-    if (!enabled || flagged) return;
-
-    const src = img.currentSrc || img.src || "";
-    if (!src) return;
-
-    const verdict = await send({
-      type: "scoreImage",
-      src,
-      alt: img.alt || "",
-      pageUrl: location.href
+    pending.push({
+      img,
+      src: img.currentSrc || img.src || "",
+      alt: img.alt || ""
     });
 
-    if (!verdict || !verdict.blur || flagged) return;
-    if (img.dataset.siftBlurred === "1" || img.dataset.siftRevealed === "1") return;
+    if (pending.length >= BATCH_SIZE) flushBatch();
+    else scheduleBatch();
+  }
 
-    blurImage(img, verdict);
+  function scheduleBatch() {
+    if (batchTimer) return;
+    batchTimer = setTimeout(() => {
+      batchTimer = null;
+      flushBatch();
+    }, BATCH_DELAY_MS);
+  }
+
+  async function flushBatch() {
+    if (flushing) return;
+    if (batchTimer) {
+      clearTimeout(batchTimer);
+      batchTimer = null;
+    }
+    if (!pending.length || !enabled || flagged) return;
+
+    const chunk = pending.splice(0, BATCH_SIZE);
+    flushing = true;
+
+    try {
+      const reply = await send({
+        type: "scoreImages",
+        items: chunk.map(({ src, alt }) => ({ src, alt }))
+      });
+
+      const results = reply && Array.isArray(reply.results) ? reply.results : [];
+      const bySrc = new Map();
+      for (const result of results) {
+        if (result && result.src) bySrc.set(result.src, result);
+      }
+
+      for (const item of chunk) {
+        const verdict = bySrc.get(item.src);
+        if (!verdict || !verdict.blur || flagged) continue;
+        if (item.img.dataset.siftBlurred === "1" || item.img.dataset.siftRevealed === "1") continue;
+        blurImage(item.img, verdict);
+      }
+    } finally {
+      flushing = false;
+      if (pending.length && !flagged) scheduleBatch();
+    }
   }
 
   const io = new IntersectionObserver(
@@ -416,7 +406,7 @@
         enqueue(entry.target);
       }
     },
-    { rootMargin: "300px" }
+    { rootMargin: "0px", threshold: 0.01 }
   );
 
   /* ------------------------------------------------------------------ */
@@ -424,7 +414,7 @@
   /* ------------------------------------------------------------------ */
 
   function scan(root) {
-    if (!enabled) return;
+    if (!enabled || articleMode) return;
     const scope = root && root.querySelectorAll ? root : document;
     for (const img of scope.querySelectorAll("img")) observe(img);
   }
@@ -471,7 +461,7 @@
 
     flagged = true;
     lastVerdict = verdict;
-    queue.length = 0;
+    pending.length = 0;
     blurAll(verdict);
   });
 
@@ -480,12 +470,20 @@
   /* ------------------------------------------------------------------ */
 
   async function boot() {
-    const state = await send({ type: "getState" });
-    if (state) enabled = state.enabled !== false && state.blurImages !== false;
+    // Read settings directly. This avoids waking the service worker just to
+    // ask whether Sift is on.
+    let stored = {};
+    try {
+      stored = await chrome.storage.local.get(["enabled", "blurImages"]);
+    } catch {
+      stored = {};
+    }
+
+    enabled = stored.enabled !== false && stored.blurImages !== false;
     if (!enabled) return;
 
-    ensurePill();
-    scan(document);
+    articleMode = isArticlePage();
+    if (!articleMode) scan(document);
     watchDom();
   }
 

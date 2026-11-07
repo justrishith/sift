@@ -1,15 +1,9 @@
 /* Sift — image shield */
 
 img.sift-blurred {
-  filter: blur(18px) saturate(0.55) !important;
+  filter: blur(18px) saturate(0.9) brightness(0.97) !important;
   cursor: pointer !important;
   transition: filter 180ms ease;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  img.sift-blurred {
-    transition: none;
-  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -25,30 +19,19 @@ img.sift-blurred {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  border: 0;
-  border-radius: 3px;
+  border: 1.5px solid rgba(196, 181, 253, 0.72);
+  border-radius: 6px;
   overflow: hidden;
   cursor: pointer;
+  /* No backdrop-filter: dozens of backdrop layers make long image pages
+     scroll badly. The picture underneath is already blurred. */
   background:
-    radial-gradient(120% 95% at 50% 38%, rgba(124, 58, 237, 0.22), transparent 62%),
-    rgba(18, 10, 36, 0.52);
-  -webkit-backdrop-filter: blur(10px) saturate(0.7);
-  backdrop-filter: blur(10px) saturate(0.7);
-}
-
-.sift-cover::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: linear-gradient(
-    115deg,
-    transparent 34%,
-    rgba(196, 181, 253, 0.16) 50%,
-    transparent 66%
-  );
-  transform: translateX(-110%);
-  animation: sift-sheen 3.4s ease-in-out infinite;
+    radial-gradient(80% 80% at 28% 18%, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0) 62%),
+    linear-gradient(155deg, rgba(196, 181, 253, 0.72), rgba(109, 40, 217, 0.62));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  animation: sift-cover-in 220ms ease both;
+  transition: opacity 180ms ease, transform 180ms ease;
 }
 
 .sift-cover:focus-visible {
@@ -56,150 +39,125 @@ img.sift-blurred {
   outline-offset: 2px;
 }
 
-/* ------------------------------------------------------------------ */
-/* the orb                                                             */
-/* ------------------------------------------------------------------ */
-
-.sift-orb {
-  position: relative;
-  z-index: 1;
-  width: clamp(38px, 17%, 68px);
-  aspect-ratio: 1;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  background: radial-gradient(circle at 34% 28%, #f2ecff 0%, #c4b5fd 28%, #7c3aed 64%, #4c1d95 100%);
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.4),
-    0 0 26px rgba(167, 139, 250, 0.6);
-  animation: sift-pulse 2.4s ease-in-out infinite;
-}
-
-.sift-orb img {
-  width: 56%;
-  height: 56%;
-  display: block;
-  object-fit: contain;
-  filter: drop-shadow(0 1px 2px rgba(27, 16, 51, 0.45));
-}
-
-/* ------------------------------------------------------------------ */
-/* corner badge                                                        */
-/* ------------------------------------------------------------------ */
-
-.sift-badge {
+.sift-cover-badge {
   position: absolute;
   z-index: 2;
-  top: 8px;
-  left: 8px;
-  padding: 4px 9px;
+  top: 9px;
+  left: 9px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 5px;
+  border: 1.5px solid #c4b5fd;
   border-radius: 999px;
   background: rgba(27, 16, 51, 0.92);
-  color: #e9e2ff;
-  border: 1px solid #a78bfa;
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: #ffffff;
   font-size: 10px;
   font-weight: 700;
   line-height: 1.2;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   white-space: nowrap;
-  box-shadow: 0 2px 10px rgba(18, 10, 36, 0.35);
+  box-shadow: 0 8px 20px rgba(21, 10, 43, 0.32);
 }
 
-/* ------------------------------------------------------------------ */
-/* motion                                                              */
-/* ------------------------------------------------------------------ */
-
-@keyframes sift-pulse {
-  0%,
-  100% {
-    transform: scale(1);
-    box-shadow:
-      0 0 0 1px rgba(255, 255, 255, 0.4),
-      0 0 22px rgba(167, 139, 250, 0.55);
-  }
-  50% {
-    transform: scale(1.08);
-    box-shadow:
-      0 0 0 1px rgba(255, 255, 255, 0.55),
-      0 0 40px rgba(167, 139, 250, 0.9);
-  }
+.sift-cover .sift-cover-badge img {
+  display: block !important;
+  width: 19px !important;
+  height: 19px !important;
+  max-width: 19px !important;
+  max-height: 19px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  object-fit: contain !important;
+  flex: none;
 }
 
-@keyframes sift-sheen {
-  0%,
-  55% {
-    transform: translateX(-110%);
-  }
-  100% {
-    transform: translateX(110%);
-  }
+.sift-cover .sift-cover-mark {
+  display: block !important;
+  width: clamp(38px, 16%, 62px) !important;
+  height: auto !important;
+  max-width: 62px !important;
+  max-height: 62px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  opacity: 0.95;
+  filter: drop-shadow(0 8px 18px rgba(33, 16, 63, 0.4));
+  animation: sift-float 6s ease-in-out infinite;
+  will-change: transform;
+}
+
+.sift-cover-hint {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(27, 16, 51, 0.58);
+  color: #f6f1ff;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  text-shadow: 0 1px 6px rgba(21, 10, 43, 0.5);
+}
+
+.sift-cover:hover .sift-cover-badge {
+  transform: translateY(-1px);
+}
+
+/* Small images get just the corner badge. */
+.sift-cover-small .sift-cover-mark,
+.sift-cover-small .sift-cover-hint {
+  display: none;
+}
+
+/* Really small images get just the flower. */
+.sift-cover-tiny .sift-cover-badge {
+  top: 5px;
+  left: 5px;
+  padding: 4px;
+}
+
+.sift-cover-tiny .sift-cover-badge span {
+  display: none;
+}
+
+.sift-cover-tiny .sift-cover-badge img {
+  width: 16px;
+  height: 16px;
+}
+
+.sift-cover-out {
+  opacity: 0;
+  transform: scale(1.015);
+  pointer-events: none;
+}
+
+@keyframes sift-cover-in {
+  from { opacity: 0; transform: scale(0.985); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes sift-float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50%      { transform: translateY(-4px) rotate(3deg); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .sift-orb,
-  .sift-cover::after {
+  img.sift-blurred,
+  .sift-cover,
+  .sift-cover-badge {
+    transition: none;
+  }
+
+  .sift-cover,
+  .sift-cover-mark {
     animation: none;
   }
-}
-
-/* ------------------------------------------------------------------ */
-/* the single reveal control                                           */
-/* ------------------------------------------------------------------ */
-
-.sift-pill {
-  position: fixed;
-  left: 50%;
-  bottom: 24px;
-  transform: translate(-50%, 140%);
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 14px 18px 14px 22px;
-  background: #1b1033;
-  color: #ffffff;
-  border: 2px solid #a78bfa;
-  border-radius: 999px;
-  box-shadow: 0 10px 30px rgba(27, 16, 51, 0.45);
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  font-size: 18px;
-  line-height: 1.2;
-  z-index: 2147483647;
-  opacity: 0;
-  pointer-events: none;
-  transition: transform 220ms ease, opacity 220ms ease;
-}
-
-.sift-pill.sift-pill-visible {
-  transform: translate(-50%, 0);
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.sift-pill-label {
-  font-weight: 600;
-  letter-spacing: 0.01em;
-}
-
-.sift-pill-btn {
-  appearance: none;
-  border: 0;
-  border-radius: 999px;
-  padding: 12px 20px;
-  min-height: 44px;
-  background: #a78bfa;
-  color: #1b1033;
-  font: inherit;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.sift-pill-btn:hover {
-  background: #c4b5fd;
-}
-
-.sift-pill-btn:focus-visible {
-  outline: 3px solid #ffffff;
-  outline-offset: 3px;
 }

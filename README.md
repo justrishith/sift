@@ -4,7 +4,8 @@ Sift blurs AI-generated images across the web and lets the reader reveal them on
 
 Built for older readers who are being targeted by AI slop and deepfake scam ads.
 
-**Live demo:** https://sift-steel.vercel.app/slop.html
+**Live demo:** https://sift-steel.vercel.app/slop.html#sift-demo
+**Download:** https://sift-steel.vercel.app/sift-extension.zip
 
 ---
 
@@ -48,14 +49,13 @@ The toolbar popup shows the on/off switch and how many pictures Sift has blocked
 ## Demo script (90 seconds)
 
 1. Open **https://sift-steel.vercel.app/slop.html**
-2. All four images get Sift covers and the purple pill says **"4 pictures hidden"**.
+2. All four images get Sift covers, each with a **Blocked by Sift** badge.
 3. Click one cover once — it reveals, and the link behind it does **not** open.
 4. Click the revealed image again — now it behaves normally.
-5. Press **Show them** — every cover disappears.
-6. Open **https://sift-steel.vercel.app/article.html**. Real reporting stays sharp. That is the
+5. Open **https://sift-steel.vercel.app/article.html**. Real reporting stays sharp. That is the
    false-positive check.
-7. Open a **Google Images** search for something AI-generated, or a YouTube home page. Sift
-   scores the visible pictures and covers the ones that look synthetic.
+6. Open a **Google Images** search for something AI-generated, or a YouTube home page. Sift
+   scores the visible pictures in one batch and covers the ones that look synthetic.
 
 If the venue Wi-Fi dies, append `#sift-demo` to either Sift URL to force the blur without a
 network call.

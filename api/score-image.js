@@ -1,6 +1,9 @@
 // Sift - per-image vision scoring (Vercel serverless function)
-// Receives one image as base64 from the extension, asks Gemini whether the
-// pixels look AI-generated. The Gemini key never leaves the server.
+// Receives one or more images as base64 from the extension, asks Gemini
+// whether the pixels look AI-generated. The Gemini key never leaves the server.
+//
+// Batch mode is the fast path: one request for up to 8 images. One Gemini
+// call with six small images is far quicker than six separate calls.
 
 const crypto = require("crypto");
 
@@ -11,38 +14,52 @@ const MODELS = [
   "gemini-flash-lite-latest",
 ].filter(Boolean);
 
-const PROMPT = `You are an image forensics assistant for a tool that protects readers from AI-generated images.
+const BATCH_MAX = 8;
+const MAX_IMAGE_CHARS = 3_000_000;
 
-Decide whether this image is an AI-generated photograph (including photorealistic output from diffusion or GAN models) or something else.
+const PROMPT = (n) => `You will receive ${n} image${n === 1 ? "" : "s"}, each preceded by a label (Image 1${n > 1 ? `..Image ${n}` : ""}).
+
+For each image, decide whether it is an AI-generated photograph (including photorealistic output from diffusion or GAN models).
 
 Score high only when the pixels show generative artifacts: impossible anatomy, melted or garbled text, inconsistent lighting or shadows, repeating textures, oversmooth skin, warped background geometry, synthetic bokeh, or diffusion noise.
 
 Score low for real photographs, screenshots, charts, infographics, logos, illustrations, memes, and images of text. An image that merely depicts or explains AI is not itself AI-generated.
 
-Be conservative. Return JSON only.`;
+Be conservative. Return exactly ${n} result${n === 1 ? "" : "s"}, one per image, in order. JSON only.`;
 
 const SCHEMA = {
   type: "object",
   properties: {
-    ai: { type: "number", description: "0 to 1 probability that this is an AI-generated photograph" },
-    confidence: { type: "string", enum: ["low", "medium", "high"] },
-    reasons: { type: "array", items: { type: "string" } },
+    results: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          index: { type: "integer", description: "1-based image number" },
+          ai: { type: "number", description: "0 to 1 probability that this is an AI-generated photograph" },
+          confidence: { type: "string", enum: ["low", "medium", "high"] },
+        },
+        required: ["index", "ai", "confidence"],
+      },
+    },
   },
-  required: ["ai", "confidence", "reasons"],
+  required: ["results"],
 };
 
 const cache = new Map();
 
-async function callGemini(apiKey, data, mime) {
+async function callGemini(apiKey, images) {
+  const parts = [];
+  images.forEach((image, i) => {
+    parts.push({ text: `Image ${i + 1}` });
+    parts.push({ inlineData: { mimeType: image.mime, data: image.image } });
+  });
+  parts.push({ text: PROMPT(images.length) });
+
   const body = {
-    contents: [
-      {
-        role: "user",
-        parts: [{ inlineData: { mimeType: mime, data } }, { text: PROMPT }],
-      },
-    ],
+    contents: [{ role: "user", parts }],
     generationConfig: {
-      temperature: 0.1,
+      temperature: 0,
       responseMimeType: "application/json",
       responseSchema: SCHEMA,
     },
@@ -69,12 +86,36 @@ async function callGemini(apiKey, data, mime) {
         lastError = `${model}: empty response`;
         continue;
       }
-      return { ...JSON.parse(raw), model };
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed.results)) {
+        lastError = `${model}: missing results`;
+        continue;
+      }
+      return { results: parsed.results, model };
     } catch (e) {
       lastError = `${model}: ${e.message}`;
     }
   }
   throw new Error(lastError);
+}
+
+function normalize(results, count) {
+  const byIndex = new Map();
+  results.forEach((result, i) => {
+    const index = Number.isInteger(result?.index) ? result.index : i + 1;
+    byIndex.set(index, result);
+  });
+
+  return Array.from({ length: count }, (_, i) => {
+    const result = byIndex.get(i + 1) || results[i] || {};
+    const ai = Math.max(0, Math.min(1, Number(result.ai) || 0));
+    const confidence = result.confidence || "low";
+    return {
+      ai,
+      confidence,
+      blur: ai >= 0.75 && confidence !== "low",
+    };
+  });
 }
 
 module.exports = async (req, res) => {
@@ -98,30 +139,51 @@ module.exports = async (req, res) => {
     }
   }
 
-  const image = typeof body?.image === "string" ? body.image : "";
-  const mime = /^image\/(jpeg|png|webp|gif)$/.test(body?.mime) ? body.mime : "image/jpeg";
+  const batch = Array.isArray(body?.images);
+  const rawImages = batch ? body.images : [body];
 
-  if (image.length < 100) return res.status(400).json({ ok: false, error: "image too small" });
-  if (image.length > 3_000_000) return res.status(413).json({ ok: false, error: "image too large" });
+  if (!rawImages.length) return res.status(400).json({ ok: false, error: "no images" });
+  if (rawImages.length > BATCH_MAX) {
+    return res.status(400).json({ ok: false, error: `too many images (max ${BATCH_MAX})` });
+  }
 
-  const hash = crypto.createHash("sha256").update(image).digest("hex");
-  if (cache.has(hash)) return res.status(200).json({ ok: true, ...cache.get(hash) });
+  const images = [];
+  for (const item of rawImages) {
+    const image = typeof item?.image === "string" ? item.image : "";
+    const mime = /^image\/(jpeg|png|webp|gif)$/.test(item?.mime) ? item.mime : "image/jpeg";
+
+    if (image.length < 100) return res.status(400).json({ ok: false, error: "image too small" });
+    if (image.length > MAX_IMAGE_CHARS) {
+      return res.status(413).json({ ok: false, error: "image too large" });
+    }
+
+    images.push({ image, mime });
+  }
+
+  const hash = crypto.createHash("sha256");
+  for (const image of images) {
+    hash.update(image.image);
+    hash.update("|");
+  }
+  const key = hash.digest("hex");
+
+  if (cache.has(key)) {
+    const hit = cache.get(key);
+    const payload = { ok: true, results: hit.results, model: hit.model, cached: true };
+    if (batch) return res.status(200).json(payload);
+    return res.status(200).json({ ...payload, ...hit.results[0] });
+  }
 
   try {
-    const r = await callGemini(apiKey, image, mime);
-    const ai = Math.max(0, Math.min(1, Number(r.ai) || 0));
-    const out = {
-      ai,
-      confidence: r.confidence || "low",
-      reasons: Array.isArray(r.reasons) ? r.reasons.slice(0, 3) : [],
-      model: r.model,
-      blur: ai >= 0.75 && (r.confidence || "low") !== "low",
-    };
+    const r = await callGemini(apiKey, images);
+    const results = normalize(r.results, images.length);
+    const entry = { results, model: r.model };
 
     if (cache.size > 400) cache.clear();
-    cache.set(hash, out);
+    cache.set(key, entry);
 
-    return res.status(200).json({ ok: true, ...out });
+    if (batch) return res.status(200).json({ ok: true, ...entry });
+    return res.status(200).json({ ok: true, ...entry, ...results[0] });
   } catch (e) {
     return res.status(502).json({ ok: false, error: String(e.message || e) });
   }

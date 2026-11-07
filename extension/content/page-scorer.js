@@ -88,8 +88,8 @@
   }
 
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", () => setTimeout(run, 300), { once: true });
+    document.addEventListener("DOMContentLoaded", () => setTimeout(run, 100), { once: true });
   } else {
-    setTimeout(run, 300);
+    setTimeout(run, 100);
   }
 })();
