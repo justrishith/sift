@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sift</title>
+<style>
+  :root {
+    --ink: #1b1033;
+    --muted: #6f6685;
+    --violet: #7c3aed;
+    --line: #e2daf2;
+  }
+  * { box-sizing: border-box; }
+  body {
+    width: 280px;
+    margin: 0;
+    padding: 18px;
+    background: #faf8ff;
+    color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: 14px;
+  }
+  header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  header img { width: 34px; height: 34px; }
+  header strong {
+    display: block;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 18px;
+    letter-spacing: 0.06em;
+  }
+  header span { color: var(--muted); font-size: 12px; }
+  .row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .row span { font-weight: 600; }
+  input[type="checkbox"] {
+    appearance: none;
+    width: 44px;
+    height: 26px;
+    border-radius: 999px;
+    background: #d8cff0;
+    position: relative;
+    cursor: pointer;
+    transition: background 140ms ease;
+    flex: none;
+  }
+  input[type="checkbox"]::after {
+    content: "";
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #fff;
+    transition: transform 140ms ease;
+  }
+  input[type="checkbox"]:checked { background: var(--violet); }
+  input[type="checkbox"]:checked::after { transform: translateX(18px); }
+  input[type="checkbox"]:focus-visible {
+    outline: 3px solid var(--violet);
+    outline-offset: 2px;
+  }
+  #status {
+    margin: 14px 0;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.5;
+  }
+  a {
+    display: block;
+    text-align: center;
+    padding: 10px;
+    border-radius: 4px;
+    background: var(--violet);
+    color: #fff;
+    text-decoration: none;
+    font-weight: 600;
+  }
+  a:hover { background: #6d28d9; }
+</style>
+</head>
+<body>
+  <header>
+    <img src="../icons/icon48.png" alt="">
+    <div>
+      <strong>SIFT</strong>
+      <span>AI image shield</span>
+    </div>
+  </header>
+
+  <label class="row">
+    <span>Blur AI images</span>
+    <input id="toggle" type="checkbox">
+  </label>
+
+  <p id="status"></p>
+
+  <a href="https://sift-steel.vercel.app/slop.html" target="_blank" rel="noopener">Open the demo</a>
+
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,38 +1,42 @@
 /*
- * DeepSafe - image shield
- * -----------------------
- * The visible product: when an image is judged to be AI-generated, it is
- * blurred in place and the user gets ONE plain control to reveal it.
+ * Sift — image shield
+ * -------------------
+ * When the page is flagged, every content image is blurred in place and the
+ * reader gets one plain control: "N pictures hidden — Show them".
  *
- * Why blur instead of remove:
- *   - the page layout never collapses
- *   - the decision is reversible (one tap)
- *   - it reads as "something is hidden from you", not "the site is broken"
- *
- * Cost control: only images that are (a) large enough to matter and
- * (b) actually near the viewport are ever sent for a verdict.
+ * Design rules:
+ *   - blur, never remove, so the layout never collapses
+ *   - a blurred image cannot navigate anywhere on the first click
+ *   - one tap reveals, a second tap behaves normally
+ *   - lazy images below the fold are blurred too; they are never skipped
+ *     just because they have not decoded yet
  */
+
 (() => {
   "use strict";
 
-  const MIN_EDGE = 120;          // ignore icons, sprites, avatars
-  const MAX_PER_PAGE = 80;       // hard cap, protects against infinite feeds
-  const processed = new WeakSet();
+  const MIN_EDGE = 120;   // skip icons, avatars, sprites
+  const MAX_IMAGES = 120; // hard cap for infinite feeds
+
   const blurred = new Set();
 
+  let enabled = true;
+  let flagged = false;
   let revealedAll = false;
   let hiddenCount = 0;
-  let sentCount = 0;
-  let enabled = true;
+  let lastVerdict = null;
+  let pill = null;
 
-  /* ---------- messaging ---------- */
+  /* ------------------------------------------------------------------ */
+  /* messaging                                                           */
+  /* ------------------------------------------------------------------ */
 
   function send(msg) {
     return new Promise((resolve) => {
       try {
-        chrome.runtime.sendMessage(msg, (r) => {
+        chrome.runtime.sendMessage(msg, (reply) => {
           if (chrome.runtime.lastError) return resolve(null);
-          resolve(r);
+          resolve(reply);
         });
       } catch {
         resolve(null);
@@ -40,212 +44,196 @@
     });
   }
 
-  /* ---------- the pill ---------- */
-
-  let pill = null;
+  /* ------------------------------------------------------------------ */
+  /* pill                                                                */
+  /* ------------------------------------------------------------------ */
 
   function ensurePill() {
     if (pill) return pill;
+
     pill = document.createElement("div");
-    pill.className = "ds-pill";
+    pill.className = "sift-pill";
     pill.setAttribute("role", "status");
     pill.setAttribute("aria-live", "polite");
 
     const label = document.createElement("span");
-    label.className = "ds-pill-label";
+    label.className = "sift-pill-label";
 
-    const btn = document.createElement("button");
-    btn.className = "ds-pill-btn";
-    btn.type = "button";
-    btn.textContent = "Show them";
-    btn.addEventListener("click", revealAll);
+    const button = document.createElement("button");
+    button.className = "sift-pill-btn";
+    button.type = "button";
+    button.textContent = "Show them";
+    button.addEventListener("click", revealAll);
 
-    pill.append(label, btn);
+    pill.append(label, button);
     document.documentElement.appendChild(pill);
     return pill;
   }
 
   function updatePill() {
     if (!pill) return;
+
     if (hiddenCount === 0 || revealedAll) {
-      pill.classList.remove("ds-pill-visible");
+      pill.classList.remove("sift-pill-visible");
       return;
     }
-    pill.querySelector(".ds-pill-label").textContent =
+
+    pill.querySelector(".sift-pill-label").textContent =
       hiddenCount === 1 ? "1 picture hidden" : `${hiddenCount} pictures hidden`;
-    pill.classList.add("ds-pill-visible");
+    pill.classList.add("sift-pill-visible");
   }
 
   function revealAll() {
     revealedAll = true;
-    for (const img of blurred) unblur(img, true);
+    hiddenCount = 0;
+
+    for (const img of [...blurred]) unblur(img);
+
     updatePill();
-    send({ type: "record", imagesRevealed: blurred.size });
+    send({ type: "record", imagesRevealed: 1 });
   }
 
-  /* ---------- blur / reveal ---------- */
+  /* ------------------------------------------------------------------ */
+  /* blur / reveal                                                       */
+  /* ------------------------------------------------------------------ */
 
   function blurImage(img, verdict) {
-    if (img.dataset.dsBlurred === "1") return;
-    img.dataset.dsBlurred = "1";
-    img.classList.add("ds-blurred");
-    img.setAttribute(
-      "title",
-      "DeepSafe: this picture may be AI-generated. Tap to see it."
-    );
+    if (img.dataset.siftBlurred === "1") return;
 
-    // Block click-through so a blurred image can never take them to a
-    // scam page by accident. First tap reveals, second tap navigates.
+    img.dataset.siftBlurred = "1";
+    img.classList.add("sift-blurred");
+    img.setAttribute("title", "Sift: this picture may be AI-generated. Click to reveal it.");
+
+    // Capture phase + preventDefault means the first click can never
+    // follow a link behind the image.
     img.addEventListener("click", onBlurredClick, true);
 
     blurred.add(img);
-    hiddenCount++;
+    hiddenCount += 1;
+    revealedAll = false;
+
     updatePill();
-
-    send({
-      type: "record",
-      imagesHidden: 1,
-      reason: verdict && verdict.reasons ? verdict.reasons[0] : ""
-    });
+    send({ type: "record", imagesHidden: 1, category: verdict && verdict.category });
   }
 
-  function onBlurredClick(e) {
-    const img = e.currentTarget;
-    if (img.dataset.dsRevealed === "1") return; // second tap: let it through
-    e.preventDefault();
-    e.stopPropagation();
-    unblur(img, false);
+  function onBlurredClick(event) {
+    const img = event.currentTarget;
+    if (img.dataset.siftRevealed === "1") return; // second click: normal behaviour
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    unblur(img);
   }
 
-  function unblur(img, silent) {
-    img.classList.remove("ds-blurred");
-    img.dataset.dsRevealed = "1";
+  function unblur(img) {
+    img.classList.remove("sift-blurred");
+    img.dataset.siftRevealed = "1";
     img.removeEventListener("click", onBlurredClick, true);
     img.removeAttribute("title");
-    blurred.delete(img);
-    if (!silent) {
+
+    if (blurred.delete(img) && !revealedAll) {
       hiddenCount = Math.max(0, hiddenCount - 1);
       updatePill();
-      send({ type: "correction", kind: "image-revealed" });
     }
   }
 
-  /* ---------- candidate selection ---------- */
+  /* ------------------------------------------------------------------ */
+  /* candidate selection                                                 */
+  /* ------------------------------------------------------------------ */
 
-  function isCandidate(img) {
-    if (!img || processed.has(img)) return false;
-    if (img.dataset.dsBlurred === "1") return false;
-    if (sentCount >= MAX_PER_PAGE) return false;
+  function isContentImage(img) {
+    if (!(img instanceof HTMLImageElement)) return false;
+    if (img.dataset.siftBlurred === "1") return false;
+    if (img.dataset.siftRevealed === "1") return false;
 
-    const w = img.naturalWidth || img.width || 0;
-    const h = img.naturalHeight || img.height || 0;
-    if (w < MIN_EDGE || h < MIN_EDGE) return false;
+    const rect = img.getBoundingClientRect();
+    const attrW = Number(img.getAttribute("width")) || 0;
+    const attrH = Number(img.getAttribute("height")) || 0;
 
-    const src = img.currentSrc || img.src || "";
-    if (!/^https?:/.test(src)) return false;
-    if (/\.(svg|gif)(\?|$)/i.test(src)) return false;
+    const width = Math.max(img.naturalWidth || 0, rect.width || 0, attrW);
+    const height = Math.max(img.naturalHeight || 0, rect.height || 0, attrH);
 
-    return true;
+    // An image that has not decoded yet (loading="lazy" below the fold)
+    // reports naturalWidth 0 and a height of about 1px. It still has a
+    // real layout width, so judge it on width alone. Once it loads, the
+    // blur class is already applied.
+    if (img.naturalWidth === 0) return width >= MIN_EDGE;
+
+    return width >= MIN_EDGE && height >= MIN_EDGE;
   }
 
-  async function consider(img) {
-    if (!isCandidate(img)) return;
-    processed.add(img);
-    sentCount++;
+  function blurAll(verdict) {
+    let count = 0;
 
-    const verdict = await send({
-      type: "scoreImage",
-      src: img.currentSrc || img.src,
-      pageUrl: location.href,
-      alt: img.alt || "",
-      width: img.naturalWidth,
-      height: img.naturalHeight
-    });
-
-    if (verdict && verdict.blur) blurImage(img, verdict);
+    for (const img of document.querySelectorAll("img")) {
+      if (count >= MAX_IMAGES) break;
+      if (!isContentImage(img)) continue;
+      blurImage(img, verdict);
+      count += 1;
+    }
   }
 
-  /* ---------- observation ---------- */
-
-  const io = new IntersectionObserver(
-    (entries) => {
-      for (const entry of entries) {
-        if (!entry.isIntersecting) continue;
-        io.unobserve(entry.target);
-        consider(entry.target);
-      }
-    },
-    { rootMargin: "300px" } // start a little before they scroll to it
-  );
-
-  function observe(img) {
-    if (!isCandidate(img)) return;
-    io.observe(img);
-  }
-
-  function scan(root) {
-    if (!enabled) return;
-    const scope = root && root.querySelectorAll ? root : document;
-    for (const img of scope.querySelectorAll("img")) observe(img);
-  }
-
+  /* Images added after the verdict (infinite scroll, lazy sections). */
   function watchDom() {
-    const mo = new MutationObserver((mutations) => {
-      for (const m of mutations) {
-        for (const node of m.addedNodes) {
+    const observer = new MutationObserver((mutations) => {
+      if (!flagged) return;
+
+      for (const mutation of mutations) {
+        for (const node of mutation.addedNodes) {
           if (node.nodeType !== 1) continue;
-          if (node.tagName === "IMG") observe(node);
-          else if (node.querySelectorAll) scan(node);
+
+          if (node.tagName === "IMG") {
+            if (isContentImage(node)) blurImage(node, lastVerdict);
+            continue;
+          }
+
+          if (!node.querySelectorAll) continue;
+          for (const img of node.querySelectorAll("img")) {
+            if (isContentImage(img)) blurImage(img, lastVerdict);
+          }
         }
       }
     });
-    mo.observe(document.documentElement, { childList: true, subtree: true });
+
+    observer.observe(document.documentElement, { childList: true, subtree: true });
   }
 
-  /* ---------- page verdict: blur everything ---------- */
+  /* ------------------------------------------------------------------ */
+  /* verdict                                                             */
+  /* ------------------------------------------------------------------ */
 
-  function blurAll(verdict) {
-    for (const img of document.querySelectorAll("img")) {
-      const w = img.naturalWidth || img.width || 0;
-      const h = img.naturalHeight || img.height || 0;
-      if (w < MIN_EDGE || h < MIN_EDGE) continue;
-      if (img.dataset.dsRevealed === "1") continue;
-      if (img.dataset.dsBlurred === "1") continue;
-      processed.add(img);
-      blurImage(img, verdict);
-    }
-  }
-
-  document.addEventListener("sift:verdict", (e) => {
+  document.addEventListener("sift:verdict", (event) => {
     if (!enabled) return;
-    if (!e.detail || !e.detail.blur) return;
-    blurAll(e.detail);
+
+    const verdict = event.detail;
+    if (!verdict || !verdict.blur) return;
+
+    flagged = true;
+    lastVerdict = verdict;
+    blurAll(verdict);
   });
 
-  /* ---------- settings ---------- */
+  /* ------------------------------------------------------------------ */
+  /* boot                                                                */
+  /* ------------------------------------------------------------------ */
 
-  async function loadSettings() {
+  async function boot() {
     const state = await send({ type: "getState" });
-    if (state) enabled = state.enabled && state.blurImages !== false;
-    if (enabled) {
-      ensurePill();
-      scan(document);
-      watchDom();
-    }
+    if (state) enabled = state.enabled !== false && state.blurImages !== false;
+    if (!enabled) return;
+
+    ensurePill();
+    watchDom();
   }
 
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== "local") return;
-    if (changes.enabled || changes.blurImages) {
-      location.reload(); // simplest correct behaviour; rare event
-    }
+    if (changes.enabled || changes.blurImages) location.reload();
   });
 
-  /* ---------- boot ---------- */
-
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", loadSettings, { once: true });
+    document.addEventListener("DOMContentLoaded", boot, { once: true });
   } else {
-    loadSettings();
+    boot();
   }
 })();

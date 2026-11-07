@@ -4,7 +4,7 @@ Sift blurs AI-generated images in news articles and lets the reader reveal them 
 
 Built for older readers who are being targeted by AI slop and deepfake scam ads.
 
-**Live demo:** https://sift-steel.vercel.app/article.html
+**Live demo:** https://sift-steel.vercel.app/slop.html
 
 ---
 
@@ -12,65 +12,45 @@ Built for older readers who are being targeted by AI slop and deepfake scam ads.
 
 ```
 article opens
-   └─ content script extracts the article text
-        └─ one request to the local proxy
+   └─ content script finds the article and extracts its text
+        └─ one request to the scoring endpoint
              └─ Gemini classifies: synthetic / content_farm / editorial
-                  └─ if flagged, every content image on the page is blurred
-                       └─ "3 pictures hidden  [Show them]"
+                  └─ if flagged, every content image is blurred in place
+                       └─ "4 pictures hidden  [Show them]"
 ```
 
 One model call per **article**, not per image. That keeps it fast and cheap, and it means the
 blur decision is explainable: the page was judged, not each picture.
 
-The API key lives in `.env` and is used only by the proxy. It never enters the extension
-bundle, so it cannot be extracted from a `.crx`.
+The Gemini key lives in a server-side environment variable on Vercel. It never enters the
+extension bundle, so it cannot be extracted from a `.crx`.
 
 ---
 
-## Run the demo
+## Load the extension
 
-**1. Add your key**
+1. Open `chrome://extensions`
+2. Turn on **Developer mode**
+3. Click **Load unpacked** and select the `extension` folder
+4. Pin Sift to the toolbar
 
-```powershell
-# edit .env
-GEMINI_API_KEY=your_key_here
-GEMINI_MODEL=gemini-2.5-flash
-PROXY_PORT=8787
-```
-
-Get a free key at https://aistudio.google.com/apikey
-
-**2. Start the proxy**
-
-```powershell
-powershell -ExecutionPolicy Bypass -File server\proxy.ps1
-```
-
-Leave it running. It prints `Sift proxy on http://127.0.0.1:8787`.
-
-**3. Load the extension**
-
-- `chrome://extensions`
-- Developer mode → **Load unpacked** → select the `extension` folder
-
-**4. Open the demo article**
-
-Open `site/article.html` in Chrome (double-click it, or drag it into a tab).
-
-The four images blur after the classifier returns, usually 1–3 seconds.
-
-> Tip: open `site/article.html#sift-demo` to force the blur without calling the API.
-> Useful if the demo Wi-Fi dies.
+The toolbar popup shows the on/off switch and how many pictures Sift has blurred this week.
 
 ---
 
 ## Demo script (90 seconds)
 
-1. Open `site/article.html`. Let the page settle.
-2. Four images are blurred. Pill: **"4 pictures hidden"**.
-3. Tap one image → it reveals. Tap again → it navigates.
-4. Tap **"Show them"** → all reveal.
-5. Open the DevTools console to show the verdict: category, confidence, reasons.
+1. Open **https://sift-steel.vercel.app/slop.html**
+2. After 1–3 seconds all four images blur and the purple pill says **"4 pictures hidden"**.
+3. Click one blurred image once — it reveals, and the link behind it does **not** open.
+4. Click the revealed image again — now it behaves normally.
+5. Press **Show them** — every image on the page reveals.
+6. Open **https://sift-steel.vercel.app/article.html**. Real reporting stays sharp. That is the
+   false-positive check.
+7. Open DevTools console to show the verdict: category, confidence, reasons.
+
+If the venue Wi-Fi dies, append `#sift-demo` to either URL to force the blur without a network
+call. The real classifier path is the one to demo when the network is up.
 
 ---
 
@@ -78,18 +58,19 @@ The four images blur after the classifier returns, usually 1–3 seconds.
 
 ```
 extension/
-  manifest.json           MV3, DNR blocklist, content scripts
-  background.js           rules, stats, dHash, page + image scoring
-  content/page-scorer.js  extract article text -> proxy -> verdict
-  content/image-shield.js blur, reveal, pill
-  content/engine.js       social-site section hiding (not used in this demo)
-  shared/sections.js      section rule definitions
-  rules/scams.json        static scam-domain blocklist (placeholder)
-server/
-  proxy.ps1               local HTTP proxy holding the Gemini key
+  manifest.json           MV3: two content scripts, no remote code
+  background.js           the only network call: article text -> verdict
+  content/page-scorer.js  article detection, text extraction, verdict event
+  content/image-shield.js blur, reveal, click-through blocking, pill
+  content/image-shield.css
+  popup/popup.html        on/off + weekly count
+  icons/                  purple flower mark
+api/
+  score-page.js           Vercel serverless function holding the Gemini key
 site/
-  index.html              demo front page
-  article.html            demo article
+  index.html              landing page
+  slop.html               page that should blur
+  article.html            control page that should stay sharp
   styles.css
 ```
 
@@ -99,17 +80,19 @@ site/
 
 - **Gemini classifies text, not pixels.** It decides whether the *article* looks AI-generated.
   A deepfake planted on a trustworthy publisher is not caught by this alone.
-- **One verdict per page.** If the article is flagged, all its images blur, including real ones.
-  That is deliberate: the blur is reversible and the user stays in control.
-- **The proxy is a demo server.** It is single-threaded PowerShell on localhost. For anything
-  real, move it to a Worker/serverless function with auth, rate limits, and caching.
-- **No teaching layer yet.** Reveal is one tap, no explanations or quizzes.
+- **One verdict per page.** If the article is flagged, all its content images blur, including
+  real ones. That is deliberate: the blur is reversible and the reader stays in control.
+- **Article pages only.** Sift scores pages that contain an `<article>`, or a `<main>` with at
+  least three paragraphs. YouTube and dashboards are not scored by this build.
+- **No teaching layer yet.** Reveal is one tap, with no explanation or quiz.
+- **Fails open.** If the endpoint is down or the key is missing, nothing is blurred and the page
+  behaves normally.
 
 ---
 
 ## Security notes
 
-- `.env` is gitignored. `.env.example` is the template.
-- The extension never sees the key. It only knows `http://127.0.0.1:8787/score-page`.
-- The proxy sends only the article text and title to Gemini. No URLs, cookies, or identifiers.
-- CORS is open on the proxy for local demo use; lock it down before deploying anywhere.
+- `.env` is gitignored; `.env.example` is the template.
+- The extension never sees the key. It only knows the `/api/score-page` URL.
+- Only the article title and text are sent to the endpoint. No URLs, cookies, or identifiers.
+- The endpoint caps input at 6,000 characters and caches verdicts in memory.

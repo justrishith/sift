@@ -3,84 +3,143 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sift — Front Page</title>
-<meta name="description" content="Sift is a demo news front page. A browser extension that blurs AI-generated images in news articles.">
+<title>Sift — Blur AI-generated images before they fool you</title>
+<meta name="description" content="Sift is a Chrome extension that blurs AI-generated images in news articles and lets the reader reveal them one at a time.">
+<meta name="theme-color" content="#f4efff">
+<link rel="icon" href="flower.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
 <header class="topbar">
   <div class="wrap topbar-inner">
-    <a class="wordmark" href="index.html">Sift</a>
-    <span class="topbar-note">Demo build</span>
+    <a class="wordmark" href="index.html" aria-label="Sift home">
+      <img class="brand-mark" src="flower.svg" alt="" width="24" height="24">
+      <span>sift<i class="wordmark-dot">.</i></span>
+    </a>
+    <nav class="topnav" aria-label="Primary">
+      <a href="#how">How it works</a>
+      <a href="#try">Test pages</a>
+      <a href="https://github.com/justrishith/sift">GitHub</a>
+    </nav>
   </div>
 </header>
 
-<div class="wrap">
-  <div class="masthead">
-    <h1>Sift</h1>
-    <div class="masthead-meta">
-      <span>Saturday, November 7, 2026</span>
-      <span>Independent reporting, edited for clarity</span>
+<section class="hero">
+  <div class="hero-orbs" aria-hidden="true">
+    <div class="orb-glow"></div>
+    <div class="orb orb-main">
+      <img src="flower.svg" alt="">
+    </div>
+    <div class="orb orb-chip"></div>
+    <div class="hero-grid-lines"></div>
+  </div>
+
+  <div class="wrap hero-grid">
+    <div class="hero-copy">
+      <span class="eyebrow"><i class="eyebrow-dot"></i> AI image shield</span>
+      <h1>Blur the fake.<br>Keep the reader in&nbsp;control.</h1>
+      <p class="lede">
+        Sift reads the article, decides whether it looks machine-made, and blurs its
+        images before they can mislead anyone. One tap reveals them. Nothing is removed.
+      </p>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="slop.html">See it block a slop page</a>
+        <a class="btn btn-ghost" href="article.html">Read a clean article</a>
+      </div>
+      <p class="hero-note">Gemini reads the text, never your images. The key stays on the server.</p>
     </div>
   </div>
-</div>
+</section>
 
-<main class="wrap">
-  <section class="lead" aria-labelledby="lead-headline">
-    <div>
-      <span class="label">Business</span>
-      <h2 id="lead-headline"><a href="article.html">Tech Billionaire&rsquo;s &lsquo;AI Trading Fund&rsquo; Vanishes After $400 Million Raised</a></h2>
-      <p class="lead-dek">Meridian Alpha promised investors a machine-learning edge over the market. Nine months after its launch, its website is offline, its offices are empty, and its founder is not answering questions.</p>
-      <p class="lead-byline">By Daniel Okafor &middot; 5-minute read</p>
-    </div>
-
-    <aside class="lead-aside" aria-label="More stories">
-      <span class="label">Also in this issue</span>
-
-      <div class="aside-item">
-        <span class="label">Markets</span>
-        <h3><a href="article.html">Bond Desk Quiet as Traders Wait on Friday&rsquo;s Inflation Print</a></h3>
-        <p>Volume fell to a nine-month low, with strategists split on whether the pause is caution or exhaustion.</p>
-      </div>
-
-      <div class="aside-rule" role="presentation"></div>
-
-      <div class="aside-item">
-        <span class="label">Technology</span>
-        <h3><a href="article.html">The Quiet Retreat From &lsquo;Agentic&rsquo; Software</a></h3>
-        <p>Three enterprise vendors have pulled autonomous features this quarter, citing support costs rather than safety.</p>
-      </div>
-    </aside>
-  </section>
-
-  <section class="cards" aria-label="More headlines">
-    <article class="card">
-      <span class="label">Media</span>
-      <h3><a href="article.html">Newsrooms Begin Labelling Synthetic Images at the Point of Upload</a></h3>
-      <p>A coalition of eleven publishers will attach provenance data to every photograph, though enforcement remains voluntary.</p>
-    </article>
-
-    <article class="card">
-      <span class="label">Policy</span>
-      <h3><a href="article.html">Regulator Proposes Disclosure Rules for Algorithmic Advisers</a></h3>
-      <p>The draft would require firms to name the auditors behind performance claims, a response to a year of quiet failures.</p>
-    </article>
-
-    <article class="card">
-      <span class="label">Science</span>
-      <h3><a href="article.html">A Materials Lab Finds Its Best Results Came From Older Models</a></h3>
-      <p>Researchers report that simpler simulations outperformed newer systems on a decade of archived experiments.</p>
-    </article>
-  </section>
-</main>
-
-<footer class="site-footer">
+<section class="section" id="how">
   <div class="wrap">
-    <div class="footer-inner">
-      <span class="wordmark">Sift</span>
-      <span>Sift demo content. Not a real publication.</span>
+    <div class="section-head">
+      <span class="kicker">How it works</span>
+      <h2 class="section-title">One verdict per article, not per image</h2>
+      <p class="section-sub">
+        Classifying every image is slow and expensive. Sift classifies the page once,
+        then acts on every picture inside it.
+      </p>
     </div>
+
+    <div class="steps">
+      <div class="step">
+        <span class="step-num">01</span>
+        <h3>Read</h3>
+        <p>The extension extracts the article text and sends it to a scoring endpoint. No URL, no cookies, no identifiers.</p>
+      </div>
+      <div class="step">
+        <span class="step-num">02</span>
+        <h3>Judge</h3>
+        <p>Gemini returns one of three verdicts: editorial, content farm, or synthetic. The key stays server-side.</p>
+      </div>
+      <div class="step">
+        <span class="step-num">03</span>
+        <h3>Blur</h3>
+        <p>If the page is flagged, every content image blurs in place. The reader reveals what they choose.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section section-alt" id="try">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="kicker">The test</span>
+      <h2 class="section-title">Two pages, one extension</h2>
+      <p class="section-sub">
+        Sift runs on both. It should blur one and leave the other completely alone.
+      </p>
+    </div>
+
+    <div class="test-grid">
+      <a class="test-card" href="slop.html">
+        <span class="tag"><i class="tag-dot"></i> Should blur</span>
+        <h3>“Secret AI Money Glitch Banks Don’t Want You To Know About”</h3>
+        <p>A fabricated, machine-written page. Sift flags it and blurs all four images.</p>
+        <span class="card-arrow" aria-hidden="true">→</span>
+      </a>
+
+      <a class="test-card" href="article.html">
+        <span class="tag tag-neutral"><i class="tag-dot"></i> Should stay sharp</span>
+        <h3>“Tech Billionaire’s AI Trading Fund Vanishes After $400 Million Raised”</h3>
+        <p>Reported prose with named sources. Sift leaves it untouched.</p>
+        <span class="card-arrow" aria-hidden="true">→</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="claim">
+      <span class="kicker">Scope</span>
+      <h2>What Sift does not claim</h2>
+      <p>
+        Gemini classifies text, not pixels. Sift catches AI-generated articles and slop pages.
+        A deepfake planted on a trustworthy publisher is a separate problem, and the interface
+        never pretends otherwise.
+      </p>
+    </div>
+  </div>
+</section>
+
+<footer class="site-foot">
+  <div class="wrap foot-grid">
+    <a class="wordmark foot-wordmark" href="index.html">
+      <img class="brand-mark" src="flower.svg" alt="" width="22" height="22">
+      <span>sift<i class="wordmark-dot">.</i></span>
+    </a>
+    <p>Sift demo content. Not a real publication.</p>
+    <nav class="foot-nav" aria-label="Footer">
+      <a href="https://github.com/justrishith/sift">Source on GitHub</a>
+      <a href="slop.html">Slop page</a>
+      <a href="article.html">Clean page</a>
+    </nav>
   </div>
 </footer>
 
