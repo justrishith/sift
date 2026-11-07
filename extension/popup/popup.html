@@ -30,9 +30,10 @@
   header img { width: 34px; height: 34px; }
   header strong {
     display: block;
-    font-family: Georgia, "Times New Roman", serif;
-    font-size: 18px;
-    letter-spacing: 0.06em;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: 20px;
+    font-weight: 650;
+    letter-spacing: -0.055em;
   }
   header span { color: var(--muted); font-size: 12px; }
   .row {
@@ -82,21 +83,21 @@
     display: block;
     text-align: center;
     padding: 10px;
-    border-radius: 4px;
-    background: var(--violet);
+    border-radius: 999px;
+    background: linear-gradient(120deg, #5b21b6, #7c3aed 60%, #a78bfa);
     color: #fff;
     text-decoration: none;
     font-weight: 600;
   }
-  a:hover { background: #6d28d9; }
+  a:hover { filter: brightness(1.06); }
 </style>
 </head>
 <body>
   <header>
     <img src="../icons/icon48.png" alt="">
     <div>
-      <strong>SIFT</strong>
-      <span>AI image shield</span>
+      <strong>sift<span style="color:#7c3aed">.</span></strong>
+      <span>a very polite AI filter</span>
     </div>
   </header>
 
@@ -107,7 +108,7 @@
 
   <p id="status"></p>
 
-  <a href="https://sift-steel.vercel.app/slop.html" target="_blank" rel="noopener">Open the demo</a>
+  <a href="https://sift-steel.vercel.app/slop.html#sift-demo" target="_blank" rel="noopener">Open the demo</a>
 
   <script src="popup.js"></script>
 </body>
