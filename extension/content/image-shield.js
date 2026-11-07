@@ -108,6 +108,14 @@
     // follow a link behind the image.
     img.addEventListener("click", onBlurredClick, true);
 
+    // Keyboard users reach the anchor, not the image. Guard that path too.
+    const anchor = img.closest("a");
+    if (anchor && anchor.dataset.siftGuard !== "1") {
+      anchor.dataset.siftGuard = "1";
+      anchor.addEventListener("click", onGuardedAnchor, true);
+      anchor.addEventListener("keydown", onGuardedAnchorKey, true);
+    }
+
     blurred.add(img);
     hiddenCount += 1;
     revealedAll = false;
@@ -123,6 +131,20 @@
     event.preventDefault();
     event.stopImmediatePropagation();
     unblur(img);
+  }
+
+  function onGuardedAnchor(event) {
+    const img = event.currentTarget.querySelector("img.sift-blurred");
+    if (!img) return;
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    unblur(img);
+  }
+
+  function onGuardedAnchorKey(event) {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    onGuardedAnchor(event);
   }
 
   function unblur(img) {
