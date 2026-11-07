@@ -1,0 +1,21 @@
+# secrets
+.env
+.env.*
+!.env.example
+
+# logs / temp
+*.log
+.DS_Store
+Thumbs.db
+
+# tooling
+node_modules/
+dist/
+
+# vercel
+.vercel/
+.env.local
+vercel-deploy.log
+
+.vercel
+.env*

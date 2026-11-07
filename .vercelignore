@@ -1,0 +1,9 @@
+.env
+.env.*
+!.env.example
+.git
+extension
+server
+tools
+PLAN.md
+README.md

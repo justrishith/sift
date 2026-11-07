@@ -1,0 +1,74 @@
+/* DeepSafe image shield */
+
+img.ds-blurred {
+  filter: blur(18px) saturate(0.55) !important;
+  cursor: pointer !important;
+  transition: filter 160ms ease;
+}
+
+img.ds-blurred:hover {
+  filter: blur(14px) saturate(0.65) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  img.ds-blurred {
+    transition: none;
+  }
+}
+
+/* The single reveal control, always in the same place. */
+.ds-pill {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translate(-50%, 140%);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 18px 14px 22px;
+  background: #0f2e2a;
+  color: #ffffff;
+  border: 2px solid #2fbf8f;
+  border-radius: 999px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 18px;
+  line-height: 1.2;
+  z-index: 2147483647;
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 220ms ease, opacity 220ms ease;
+}
+
+.ds-pill.ds-pill-visible {
+  transform: translate(-50%, 0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.ds-pill-label {
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.ds-pill-btn {
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  padding: 12px 20px;
+  min-height: 44px;
+  background: #2fbf8f;
+  color: #06231f;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ds-pill-btn:hover {
+  background: #48d6a5;
+}
+
+.ds-pill-btn:focus-visible {
+  outline: 3px solid #ffffff;
+  outline-offset: 3px;
+}

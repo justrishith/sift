@@ -1,0 +1,8 @@
+{
+  "outputDirectory": "site",
+  "functions": {
+    "api/score-page.js": {
+      "maxDuration": 30
+    }
+  }
+}
