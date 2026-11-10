@@ -1,17 +1,19 @@
 /*
  * Sift — image shield
  * -------------------
- * Two ways an image gets blocked:
+ * Three ways an image gets blocked:
  *   1. the page is judged AI slop  -> every content image gets a cover
- *   2. one image is judged AI      -> that image gets a cover
+ *   2. one image matches a known-generator heuristic -> covered instantly
+ *   3. one image is judged AI by vision -> that image gets a cover
  *
  * Blocked images get a soft lilac cover with a flower, a "blocked by sift"
  * badge, and a "tap to peek" hint. Clicking a cover reveals that one picture.
  * A first click can never follow the link behind the image.
  *
- * Only images that intersect the viewport are scored, so offscreen and
- * lazy-loaded images are never fetched just to be judged. Vision calls are
- * batched six at a time for speed.
+ * There is no glimpse: images near the viewport get a neutral "sift is
+ * checking" cover before their verdict arrives, and images further out are
+ * scored silently one to two viewports ahead. Vision now runs on every page
+ * (article pages included); a whole-page verdict still overrides.
  *
  * Sift fails open: no verdict means no blur.
  */
@@ -20,12 +22,40 @@
   "use strict";
 
   const BLUR_MIN_EDGE = 120;    // page verdict: skip icons, avatars, sprites
-  const SCORE_MIN_WIDTH = 180;  // per-image vision: thumbnails and up
-  const SCORE_MIN_HEIGHT = 120;
+  const SCORE_MIN_WIDTH = 128;  // per-image vision: covers grid thumbnails
+  const SCORE_MIN_HEIGHT = 96;
   const MAX_BLUR_IMAGES = 120;
-  const MAX_SCORE_CALLS = 8;    // per page; keeps the free tier sane
+  const MAX_SCORE_CALLS = 36;   // images scored per page; keeps the free tier sane
   const BATCH_SIZE = 6;
   const BATCH_DELAY_MS = 60;
+  const PREFETCH_MARGIN = "1000px 0px 1000px 0px"; // score 1-2 viewports early
+  const MAX_CHECKING = 24;      // checking covers on screen at once
+
+  /*
+   * Instant local pre-blocks. A high-precision hit covers the image with
+   * zero network latency; the vision call is skipped entirely.
+   */
+  const GENERATOR_HOSTS = /(openai|midjourney|dall[-_]?e|stability|ideogram|leonardo|thispersondoesnotexist|thiscatdoesnotexist|thisponydoesnotexist|generated\.photos|deepai|nightcafe|craiyon|flux1|stablediffusion)/i;
+  const AI_ALT = /\b(ai[- ]?generated|midjourney|dall[- ]?e|stable diffusion|generated (with|by|using) ai|ai art)\b/i;
+  const GENERATOR_DIMS = new Set([
+    "1024x1024", "1024x1792", "1792x1024", "768x768", "512x512",
+    "896x1152", "1152x896", "1216x832", "832x1216", "1024x576", "576x1024"
+  ]);
+
+  function localVerdict(img) {
+    const src = img.currentSrc || img.src || "";
+    if (GENERATOR_HOSTS.test(src)) return { ai: 1, confidence: "high", local: "host" };
+
+    if (AI_ALT.test(img.alt || "")) return { ai: 1, confidence: "high", local: "alt" };
+
+    const w = img.naturalWidth || 0;
+    const h = img.naturalHeight || 0;
+    if (w >= 512 && GENERATOR_DIMS.has(`${w}x${h}`)) {
+      return { ai: 0.9, confidence: "medium", local: "dims" };
+    }
+
+    return null;
+  }
 
   const covers = new Map();
   const positionedParents = new Map();
@@ -37,7 +67,6 @@
   let scoreCalls = 0;
   let enabled = true;
   let flagged = false;
-  let articleMode = false;
   let lastVerdict = null;
   let flowerUrl = "";
 
@@ -117,22 +146,43 @@
     cover.classList.toggle("sift-cover-tiny", rect.width < 90 || rect.height < 70);
   }
 
-  function addCover(img) {
-    if (covers.has(img)) return;
+  function checkingCount() {
+    let n = 0;
+    for (const entry of covers.values()) {
+      if (entry.checking) n += 1;
+    }
+    return n;
+  }
+
+  /*
+   * Capture-phase blockers: while an image is covered or blurred, no
+   * pointer event may reach it, its anchor, or site tile handlers that
+   * navigate on mousedown/mouseup (image grids do this).
+   */
+  const POINTER_EVENTS = ["mousedown", "mouseup", "pointerdown", "pointerup", "touchend"];
+
+  function blockPointer(event) {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  }
+
+  function addCover(img, checking = false) {
+    const existing = covers.get(img);
+    if (existing) {
+      if (existing.checking && !checking) upgradeCover(existing);
+      return;
+    }
 
     const parent = img.parentElement;
     if (!parent) return;
 
     const cover = document.createElement("div");
-    cover.className = "sift-cover";
-    cover.setAttribute("role", "button");
-    cover.tabIndex = 0;
-    cover.setAttribute("aria-label", "Blocked by Sift. Activate to reveal this picture.");
+    cover.className = checking ? "sift-cover sift-cover-checking" : "sift-cover";
 
     const badge = document.createElement("span");
     badge.className = "sift-cover-badge";
     const badgeLabel = document.createElement("span");
-    badgeLabel.textContent = "blocked by sift";
+    badgeLabel.textContent = checking ? "sift is checking" : "blocked by sift";
     badge.append(flower(), badgeLabel);
 
     const mark = flower();
@@ -140,9 +190,33 @@
 
     const hint = document.createElement("span");
     hint.className = "sift-cover-hint";
-    hint.textContent = "tap to peek";
+    hint.textContent = checking ? "" : "tap to peek";
 
     cover.append(badge, mark, hint);
+
+    const entry = { cover, parent, observer: null, checking, blocker: null, img };
+    covers.set(img, entry);
+
+    if (checking) {
+      // While checking, no pointer event may reach the image or its link.
+      entry.blocker = blockPointer;
+      for (const type of POINTER_EVENTS) cover.addEventListener(type, blockPointer, true);
+    } else {
+      armReveal(img, entry);
+      for (const type of POINTER_EVENTS) cover.addEventListener(type, blockPointer, true);
+    }
+
+    const observer = new ResizeObserver(() => positionCover(img));
+    observer.observe(img);
+    entry.observer = observer;
+
+    positionParent(parent);
+    parent.appendChild(cover);
+    positionCover(img);
+  }
+
+  function armReveal(img, entry) {
+    const { cover } = entry;
 
     const reveal = (event) => {
       event.preventDefault();
@@ -150,6 +224,10 @@
       unblur(img);
     };
 
+    entry.reveal = reveal;
+    cover.setAttribute("role", "button");
+    cover.tabIndex = 0;
+    cover.setAttribute("aria-label", "Blocked by Sift. Activate to reveal this picture.");
     cover.addEventListener("click", reveal, true);
     cover.addEventListener(
       "keydown",
@@ -158,15 +236,18 @@
       },
       true
     );
+  }
 
-    positionParent(parent);
-    parent.appendChild(cover);
+  function upgradeCover(entry) {
+    entry.checking = false;
+    const { cover } = entry;
 
-    const observer = new ResizeObserver(() => positionCover(img));
-    observer.observe(img);
+    cover.classList.remove("sift-cover-checking");
+    for (const type of POINTER_EVENTS) cover.removeEventListener(type, blockPointer, true);
 
-    covers.set(img, { cover, parent, observer });
-    positionCover(img);
+    cover.querySelector(".sift-cover-badge span:last-child").textContent = "blocked by sift";
+    cover.querySelector(".sift-cover-hint").textContent = "tap to peek";
+    armReveal(entry.img, entry);
   }
 
   function removeCover(img) {
@@ -205,6 +286,7 @@
     // Capture phase + preventDefault means the first click can never
     // follow a link behind the image.
     img.addEventListener("click", onBlurredClick, true);
+    for (const type of POINTER_EVENTS) img.addEventListener(type, blockPointer, true);
 
     // Keyboard users reach the anchor, not the image. Guard that path too.
     const anchor = img.closest("a");
@@ -245,6 +327,7 @@
     img.classList.remove("sift-blurred");
     img.dataset.siftRevealed = "1";
     img.removeEventListener("click", onBlurredClick, true);
+    for (const type of POINTER_EVENTS) img.removeEventListener(type, blockPointer, true);
     img.removeAttribute("title");
     removeCover(img);
   }
@@ -288,20 +371,6 @@
   /* per-image vision                                                    */
   /* ------------------------------------------------------------------ */
 
-  /*
-   * Article pages are judged once, as a whole, by page-scorer.js. Running
-   * vision on every image there would double the network work and fight
-   * the page verdict, so vision only runs on non-article pages.
-   */
-  function isArticlePage() {
-    const article = document.querySelector("article");
-    if (article && (article.innerText || "").trim().length >= 350) return true;
-
-    const main = document.querySelector("main");
-    if (!main || main.querySelectorAll("p").length < 3) return false;
-    return (main.innerText || "").trim().length >= 350;
-  }
-
   function isScorableImage(img) {
     if (!(img instanceof HTMLImageElement)) return false;
     if (scored.has(img)) return false;
@@ -321,7 +390,7 @@
   }
 
   function observe(img) {
-    if (!enabled || flagged || articleMode) return;
+    if (!enabled || flagged) return;
     if (!(img instanceof HTMLImageElement)) return;
     if (scored.has(img)) return;
     if (img.dataset.siftBlurred === "1" || img.dataset.siftRevealed === "1") return;
@@ -329,14 +398,23 @@
     io.observe(img);
   }
 
-  function enqueue(img) {
-    if (!enabled || flagged || articleMode) return;
+  function enqueue(img, inView = true) {
+    if (!enabled || flagged) return;
     if (!(img instanceof HTMLImageElement)) return;
     if (scored.has(img)) return;
     if (img.dataset.siftBlurred === "1" || img.dataset.siftRevealed === "1") return;
 
     if (img.naturalWidth === 0) {
-      img.addEventListener("load", () => enqueue(img), { once: true });
+      img.addEventListener("load", () => enqueue(img, inView), { once: true });
+      return;
+    }
+
+    // Instant local pre-block: known generators and AI alt text never
+    // need the network.
+    const local = localVerdict(img);
+    if (local) {
+      scored.add(img);
+      blurImage(img, local);
       return;
     }
 
@@ -345,6 +423,12 @@
 
     scored.add(img);
     scoreCalls += 1;
+
+    // Cover what the reader can already see, then resolve it from the
+    // batched verdict. Images further out are scored silently so the
+    // verdict is ready before they scroll in.
+    if (inView && checkingCount() < MAX_CHECKING) addCover(img, true);
+
     pending.push({
       img,
       src: img.currentSrc || img.src || "",
@@ -388,9 +472,21 @@
 
       for (const item of chunk) {
         const verdict = bySrc.get(item.src);
-        if (!verdict || !verdict.blur || flagged) continue;
-        if (item.img.dataset.siftBlurred === "1" || item.img.dataset.siftRevealed === "1") continue;
-        blurImage(item.img, verdict);
+        const entry = covers.get(item.img);
+
+        if (flagged) continue; // blurAll already handled every image
+
+        if (!verdict || verdict.ok === false) {
+          // Fail open, and do not leave the reader staring at a spinner.
+          if (entry && entry.checking) removeCover(item.img);
+          continue;
+        }
+
+        if (verdict.blur) {
+          blurImage(item.img, verdict);
+        } else if (entry && entry.checking) {
+          removeCover(item.img);
+        }
       }
     } finally {
       flushing = false;
@@ -403,10 +499,25 @@
       for (const entry of entries) {
         if (!entry.isIntersecting) continue;
         io.unobserve(entry.target);
-        enqueue(entry.target);
+
+        const img = entry.target;
+        if (scored.has(img)) continue;
+        if (img.dataset.siftBlurred === "1" || img.dataset.siftRevealed === "1") continue;
+
+        // The observer fires one to two viewports early (prefetch margin).
+        // What the reader can already see gets a checking cover; the rest
+        // is scored silently so a verdict is waiting before it scrolls in.
+        const rect = img.getBoundingClientRect();
+        const inView =
+          rect.top < window.innerHeight + 100 &&
+          rect.bottom > -100 &&
+          rect.left < window.innerWidth + 100 &&
+          rect.right > -100;
+
+        enqueue(img, inView);
       }
     },
-    { rootMargin: "0px", threshold: 0.01 }
+    { rootMargin: PREFETCH_MARGIN, threshold: 0.01 }
   );
 
   /* ------------------------------------------------------------------ */
@@ -414,7 +525,7 @@
   /* ------------------------------------------------------------------ */
 
   function scan(root) {
-    if (!enabled || articleMode) return;
+    if (!enabled) return;
     const scope = root && root.querySelectorAll ? root : document;
     for (const img of scope.querySelectorAll("img")) observe(img);
   }
@@ -466,6 +577,55 @@
   });
 
   /* ------------------------------------------------------------------ */
+  /* the gate                                                            */
+  /* ------------------------------------------------------------------ */
+
+  /*
+   * Runs at document_start on window capture, before the site's own
+   * handlers exist. Some sites (Bing Images) open a detail pane from a
+   * document-level capture handler, which no listener on the cover itself
+   * can stop. Registered first, this gate intercepts every pointer event
+   * aimed at a covered or blurred image before the page can act on it.
+   */
+  let gateArmed = false;
+
+  function gate(event) {
+    if (covers.size === 0) return;
+
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+
+    const coverHit = target.closest(".sift-cover");
+    if (coverHit) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (event.type === "click") {
+        for (const [img, entry] of covers) {
+          if (entry.cover === coverHit) {
+            if (!entry.checking) unblur(img);
+            break;
+          }
+        }
+      }
+      return;
+    }
+
+    if (target instanceof HTMLImageElement && target.dataset.siftBlurred === "1") {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (event.type === "click") unblur(target);
+    }
+  }
+
+  function armGate() {
+    if (gateArmed) return;
+    gateArmed = true;
+    for (const type of [...POINTER_EVENTS, "click"]) {
+      window.addEventListener(type, gate, true);
+    }
+  }
+
+  /* ------------------------------------------------------------------ */
   /* boot                                                                */
   /* ------------------------------------------------------------------ */
 
@@ -482,8 +642,7 @@
     enabled = stored.enabled !== false && stored.blurImages !== false;
     if (!enabled) return;
 
-    articleMode = isArticlePage();
-    if (!articleMode) scan(document);
+    scan(document);
     watchDom();
   }
 
@@ -491,6 +650,9 @@
     if (area !== "local") return;
     if (changes.enabled || changes.blurImages) location.reload();
   });
+
+  // The gate must exist before the page's own scripts register theirs.
+  armGate();
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", boot, { once: true });

@@ -111,6 +111,25 @@ img.sift-blurred {
   transform: translateY(-1px);
 }
 
+/* Checking covers: neutral, quieter, clearly not a verdict. */
+.sift-cover-checking {
+  cursor: default;
+  border-style: dashed;
+  background:
+    radial-gradient(80% 80% at 28% 18%, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0) 62%),
+    linear-gradient(155deg, rgba(196, 181, 253, 0.5), rgba(109, 40, 217, 0.38));
+  animation: sift-cover-in 220ms ease both, sift-checking-pulse 1.6s ease-in-out infinite;
+}
+
+.sift-cover-checking:hover .sift-cover-badge {
+  transform: none;
+}
+
+@keyframes sift-checking-pulse {
+  0%, 100% { opacity: 0.72; }
+  50%      { opacity: 0.94; }
+}
+
 /* Small images get just the corner badge. */
 .sift-cover-small .sift-cover-mark,
 .sift-cover-small .sift-cover-hint {
@@ -159,5 +178,10 @@ img.sift-blurred {
   .sift-cover,
   .sift-cover-mark {
     animation: none;
+  }
+
+  .sift-cover-checking {
+    animation: sift-cover-in 220ms ease both;
+    opacity: 1;
   }
 }

@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Sift",
   "short_name": "Sift",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Blurs AI-generated images in news articles so they cannot mislead you.",
   "minimum_chrome_version": "121",
 
@@ -42,7 +42,7 @@
       "matches": ["<all_urls>"],
       "js": ["content/image-shield.js"],
       "css": ["content/image-shield.css"],
-      "run_at": "document_idle"
+      "run_at": "document_start"
     }
   ],
 

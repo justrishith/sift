@@ -1,9 +1,9 @@
 // Sift - page scoring endpoint (Vercel serverless function)
 // Holds the Gemini key server-side. The extension never sees it.
 
+// gemini-3.1-flash-lite is gone; 3.5-flash-lite is the verified primary.
 const MODELS = [
   process.env.GEMINI_MODEL,
-  "gemini-3.1-flash-lite",
   "gemini-3.5-flash-lite",
   "gemini-flash-lite-latest",
 ].filter(Boolean);
