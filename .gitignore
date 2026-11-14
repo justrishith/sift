@@ -19,3 +19,5 @@ vercel-deploy.log
 
 .vercel
 .env*
+
+tools/train/.env.training

@@ -27,18 +27,28 @@ RPM = float(os.environ.get("GEMINI_RPM", "14"))
 
 
 def load_env():
+    """Read .env.training; Vercel's env pull writes "[SENSITIVE]" quoted
+    placeholders for secrets it cannot read — treat those as absent."""
     env_file = os.path.join(ROOT, ".env.training")
     if os.path.exists(env_file):
         for line in open(env_file, encoding="utf-8"):
             line = line.strip()
             if line and not line.startswith("#") and "=" in line:
                 key, value = line.split("=", 1)
-                os.environ.setdefault(key.strip(), value.strip())
+                value = value.strip().strip('"').strip("'")
+                if value and "[SENSITIVE]" not in value:
+                    os.environ.setdefault(key.strip(), value)
 
 
 load_env()
-API_KEY = os.environ.get("GEMINI_API_KEY")
-MODEL = os.environ.get("GEMINI_MODEL") or "gemini-3.5-flash-lite"
+API_KEY = os.environ.get("GEMINI_API_KEY", "").strip()
+MODEL = os.environ.get("GEMINI_MODEL", "").strip() or "gemini-3.5-flash-lite"
+if not API_KEY or "[SENSITIVE]" in API_KEY:
+    sys.exit(
+        "no usable GEMINI_API_KEY in tools/train/.env.training\n"
+        "  vercel env pull cannot read secret values — paste your real key\n"
+        "  into that file as:  GEMINI_API_KEY=<key>"
+    )
 ENDPOINT = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent?key={API_KEY}"
 
 # ---- production prompt, verbatim from api/score-page.js -------------------
