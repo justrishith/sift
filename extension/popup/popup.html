@@ -8,53 +8,124 @@
     --ink: #1b1033;
     --muted: #6f6685;
     --violet: #7c3aed;
+    --violet-deep: #5b21b6;
     --line: #e2daf2;
+    --card: #ffffff;
+    --bg: #faf8ff;
   }
   * { box-sizing: border-box; }
+
   body {
-    width: 280px;
+    width: 312px;
     margin: 0;
-    padding: 18px;
-    background: #faf8ff;
+    background: var(--bg);
     color: var(--ink);
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     font-size: 14px;
   }
+
+  /* header ------------------------------------------------------------ */
+
   header {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding-bottom: 14px;
+    gap: 11px;
+    padding: 16px 18px 14px;
+    background: linear-gradient(135deg, #f3ecff 0%, #faf8ff 70%);
     border-bottom: 1px solid var(--line);
   }
-  header img { width: 34px; height: 34px; }
-  header strong {
-    display: block;
-    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    font-size: 20px;
-    font-weight: 650;
-    letter-spacing: -0.055em;
+  .mark {
+    width: 40px;
+    height: 40px;
+    flex: none;
+    display: grid;
+    place-items: center;
+    border-radius: 13px;
+    background: linear-gradient(135deg, #7c3aed, #a78bfa);
+    box-shadow: 0 6px 14px rgba(124, 58, 237, 0.35);
   }
-  header span { color: var(--muted); font-size: 12px; }
+  .mark img { width: 26px; height: 26px; }
+  header h1 {
+    margin: 0;
+    font-size: 19px;
+    font-weight: 700;
+    letter-spacing: -0.05em;
+  }
+  header h1 em { font-style: normal; color: var(--violet); }
+  header p {
+    margin: 1px 0 0;
+    color: var(--muted);
+    font-size: 11px;
+    letter-spacing: 0.02em;
+  }
+
+  /* state pill --------------------------------------------------------- */
+
+  .state {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin: 12px 14px 0;
+    padding: 8px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .state .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex: none;
+  }
+  body.on .state {
+    background: #f1eafe;
+    color: var(--violet-deep);
+  }
+  body.on .state .dot { background: #22c55e; box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.18); }
+  body.off .state {
+    background: #f3f0f7;
+    color: var(--muted);
+  }
+  body.off .state .dot { background: #b9b3c6; box-shadow: 0 0 0 3px rgba(185, 179, 198, 0.18); }
+
+  /* cards --------------------------------------------------------------- */
+
+  section {
+    margin: 10px 14px 0;
+    padding: 13px 14px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: var(--card);
+  }
+
   .row {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    padding: 16px 0;
-    border-bottom: 1px solid var(--line);
   }
-  .row span { font-weight: 600; }
+  .row .label { font-weight: 600; font-size: 13.5px; }
+  .row .sub {
+    display: block;
+    margin-top: 2px;
+    color: var(--muted);
+    font-size: 11.5px;
+    font-weight: 400;
+  }
+
+  /* switches ------------------------------------------------------------ */
+
   input[type="checkbox"] {
     appearance: none;
     width: 44px;
     height: 26px;
     border-radius: 999px;
-    background: #d8cff0;
+    background: #ddd5ee;
     position: relative;
     cursor: pointer;
     transition: background 140ms ease;
     flex: none;
+    margin: 0;
   }
   input[type="checkbox"]::after {
     content: "";
@@ -65,50 +136,113 @@
     height: 20px;
     border-radius: 50%;
     background: #fff;
+    box-shadow: 0 1px 3px rgba(27, 16, 51, 0.25);
     transition: transform 140ms ease;
   }
   input[type="checkbox"]:checked { background: var(--violet); }
   input[type="checkbox"]:checked::after { transform: translateX(18px); }
   input[type="checkbox"]:focus-visible {
-    outline: 3px solid var(--violet);
+    outline: 3px solid #c4b5fd;
     outline-offset: 2px;
   }
+  input[type="checkbox"]:disabled { opacity: 0.45; cursor: default; }
+
+  /* divider inside the site card */
+  .site-name {
+    color: var(--violet-deep);
+    font-weight: 650;
+  }
+
+  /* stats ---------------------------------------------------------------- */
+
   #status {
-    margin: 14px 0;
+    margin: 10px 14px 0;
+    padding: 0 4px;
     color: var(--muted);
     font-size: 12px;
     line-height: 1.5;
   }
-  a {
-    display: block;
-    text-align: center;
-    padding: 10px;
+
+  /* call to action -------------------------------------------------------- */
+
+  #turn-on {
+    display: none;
+    margin: 12px 14px 0;
+    width: calc(100% - 28px);
+    padding: 12px;
+    border: 0;
     border-radius: 999px;
     background: linear-gradient(120deg, #5b21b6, #7c3aed 60%, #a78bfa);
     color: #fff;
-    text-decoration: none;
-    font-weight: 600;
+    font-size: 14px;
+    font-weight: 700;
+    font-family: inherit;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    box-shadow: 0 8px 18px rgba(124, 58, 237, 0.35);
   }
-  a:hover { filter: brightness(1.06); }
+  #turn-on:hover { filter: brightness(1.06); }
+  body.off #turn-on { display: block; }
+
+  /* footer ----------------------------------------------------------------- */
+
+  footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 18px 14px;
+    margin-top: 8px;
+  }
+  footer a {
+    color: var(--violet);
+    font-size: 12px;
+    font-weight: 600;
+    text-decoration: none;
+  }
+  footer a:hover { text-decoration: underline; }
+  footer span { color: #b3abc4; font-size: 11px; }
 </style>
 </head>
-<body>
+<body class="off">
+
   <header>
-    <img src="../icons/icon48.png" alt="">
+    <div class="mark"><img src="../icons/flower.svg" alt=""></div>
     <div>
-      <strong>sift<span style="color:#7c3aed">.</span></strong>
-      <span>a very polite AI filter</span>
+      <h1>sift<em>.</em></h1>
+      <p>a very polite AI filter</p>
     </div>
   </header>
 
-  <label class="row">
-    <span>Blur AI images</span>
-    <input id="toggle" type="checkbox">
-  </label>
+  <div class="state"><span class="dot"></span><span id="state-text">Off</span></div>
+
+  <section>
+    <label class="row">
+      <span class="label">
+        Blur AI images
+        <span class="sub">Covers pictures that look AI-generated</span>
+      </span>
+      <input id="toggle" type="checkbox" aria-label="Blur AI images">
+    </label>
+  </section>
+
+  <section id="site-row" hidden>
+    <label class="row">
+      <span class="label">
+        On <span class="site-name" id="site-name">this site</span>
+        <span class="sub" id="site-sub">Sift runs here</span>
+      </span>
+      <input id="site-toggle" type="checkbox" aria-label="Run Sift on this site">
+    </label>
+  </section>
 
   <p id="status"></p>
 
-  <a href="https://sift-steel.vercel.app/slop.html#sift-demo" target="_blank" rel="noopener">Open the demo</a>
+  <button id="turn-on">Turn on Sift</button>
+
+  <footer>
+    <a href="https://sift-steel.vercel.app/slop.html#sift-demo" target="_blank" rel="noopener">Open the demo</a>
+    <span>v0.6.0</span>
+  </footer>
 
   <script src="popup.js"></script>
 </body>

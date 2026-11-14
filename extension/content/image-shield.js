@@ -3,17 +3,23 @@
  * -------------------
  * Three ways an image gets blocked:
  *   1. the page is judged AI slop  -> every content image gets a cover
- *   2. one image matches a known-generator heuristic -> covered instantly
+ *   2. one image comes from a known generator host -> covered instantly
  *   3. one image is judged AI by vision -> that image gets a cover
  *
- * Blocked images get a soft lilac cover with a flower, a "blocked by sift"
- * badge, and a "tap to peek" hint. Clicking a cover reveals that one picture.
- * A first click can never follow the link behind the image.
+ * Images are scored silently. Nothing is covered until there is a
+ * verdict, so ordinary pages (Google Images, news homepages) stay clean
+ * and only AI pictures get a cover.
  *
- * There is no glimpse: images near the viewport get a neutral "sift is
- * checking" cover before their verdict arrives, and images further out are
- * scored silently one to two viewports ahead. Vision now runs on every page
- * (article pages included); a whole-page verdict still overrides.
+ * Two budgets keep the free tier sane without killing scrolling:
+ *   - 36 images are scored one to two viewports ahead of the reader
+ *   - 300 images the reader can actually see are scored as they appear
+ *
+ * Verdicts that fail are retried a couple of times before the image is
+ * left alone, so a service-worker cold start cannot silence a page.
+ *
+ * Blocked images get a soft lilac cover with a flower, a "blocked by
+ * sift" badge, and a "tap to peek" hint. The first click can never
+ * follow the link behind the image.
  *
  * Sift fails open: no verdict means no blur.
  */
@@ -25,50 +31,45 @@
   const SCORE_MIN_WIDTH = 128;  // per-image vision: covers grid thumbnails
   const SCORE_MIN_HEIGHT = 96;
   const MAX_BLUR_IMAGES = 120;
-  const MAX_SCORE_CALLS = 36;   // images scored per page; keeps the free tier sane
+  const PREFETCH_BUDGET = 36;   // images scored ahead of the viewport per page
+  const INVIEW_BUDGET = 300;    // images scored while the reader can see them
   const BATCH_SIZE = 6;
-  const BATCH_DELAY_MS = 60;
+  const BATCH_DELAY_MS = 120;
   const PREFETCH_MARGIN = "1000px 0px 1000px 0px"; // score 1-2 viewports early
-  const MAX_CHECKING = 24;      // checking covers on screen at once
+  const MAX_RETRIES = 2;
+  const RETRY_DELAY_MS = 4000;
 
   /*
-   * Instant local pre-blocks. A high-precision hit covers the image with
-   * zero network latency; the vision call is skipped entirely.
+   * Instant local pre-block, narrowed to the one high-precision signal:
+   * an image served from a known generator's host. Dimensions and alt
+   * text matched too many real photographs, so they are gone.
    */
   const GENERATOR_HOSTS = /(openai|midjourney|dall[-_]?e|stability|ideogram|leonardo|thispersondoesnotexist|thiscatdoesnotexist|thisponydoesnotexist|generated\.photos|deepai|nightcafe|craiyon|flux1|stablediffusion)/i;
-  const AI_ALT = /\b(ai[- ]?generated|midjourney|dall[- ]?e|stable diffusion|generated (with|by|using) ai|ai art)\b/i;
-  const GENERATOR_DIMS = new Set([
-    "1024x1024", "1024x1792", "1792x1024", "768x768", "512x512",
-    "896x1152", "1152x896", "1216x832", "832x1216", "1024x576", "576x1024"
-  ]);
 
   function localVerdict(img) {
     const src = img.currentSrc || img.src || "";
     if (GENERATOR_HOSTS.test(src)) return { ai: 1, confidence: "high", local: "host" };
-
-    if (AI_ALT.test(img.alt || "")) return { ai: 1, confidence: "high", local: "alt" };
-
-    const w = img.naturalWidth || 0;
-    const h = img.naturalHeight || 0;
-    if (w >= 512 && GENERATOR_DIMS.has(`${w}x${h}`)) {
-      return { ai: 0.9, confidence: "medium", local: "dims" };
-    }
-
     return null;
   }
 
   const covers = new Map();
   const positionedParents = new Map();
-  const scored = new WeakSet();
+  const scored = new WeakSet();    // reached a final verdict (or gave up)
+  const inFlight = new WeakSet();  // waiting on a batch verdict
+  const attempts = new WeakMap();  // failed batch tries per image
   const pending = [];
+  const retryQueue = [];
 
   let batchTimer = null;
+  let retryTimer = null;
   let flushing = false;
-  let scoreCalls = 0;
-  let enabled = true;
+  let prefetchBudget = PREFETCH_BUDGET;
+  let inviewBudget = INVIEW_BUDGET;
+  let running = false;
   let flagged = false;
   let lastVerdict = null;
   let flowerUrl = "";
+  let domObserver = null;
 
   try {
     flowerUrl = chrome.runtime.getURL("icons/flower.svg");
@@ -146,14 +147,6 @@
     cover.classList.toggle("sift-cover-tiny", rect.width < 90 || rect.height < 70);
   }
 
-  function checkingCount() {
-    let n = 0;
-    for (const entry of covers.values()) {
-      if (entry.checking) n += 1;
-    }
-    return n;
-  }
-
   /*
    * Capture-phase blockers: while an image is covered or blurred, no
    * pointer event may reach it, its anchor, or site tile handlers that
@@ -166,23 +159,20 @@
     event.stopImmediatePropagation();
   }
 
-  function addCover(img, checking = false) {
+  function addCover(img) {
     const existing = covers.get(img);
-    if (existing) {
-      if (existing.checking && !checking) upgradeCover(existing);
-      return;
-    }
+    if (existing) return;
 
     const parent = img.parentElement;
     if (!parent) return;
 
     const cover = document.createElement("div");
-    cover.className = checking ? "sift-cover sift-cover-checking" : "sift-cover";
+    cover.className = "sift-cover";
 
     const badge = document.createElement("span");
     badge.className = "sift-cover-badge";
     const badgeLabel = document.createElement("span");
-    badgeLabel.textContent = checking ? "sift is checking" : "blocked by sift";
+    badgeLabel.textContent = "blocked by sift";
     badge.append(flower(), badgeLabel);
 
     const mark = flower();
@@ -190,21 +180,15 @@
 
     const hint = document.createElement("span");
     hint.className = "sift-cover-hint";
-    hint.textContent = checking ? "" : "tap to peek";
+    hint.textContent = "tap to peek";
 
     cover.append(badge, mark, hint);
 
-    const entry = { cover, parent, observer: null, checking, blocker: null, img };
+    const entry = { cover, parent, observer: null, img };
     covers.set(img, entry);
 
-    if (checking) {
-      // While checking, no pointer event may reach the image or its link.
-      entry.blocker = blockPointer;
-      for (const type of POINTER_EVENTS) cover.addEventListener(type, blockPointer, true);
-    } else {
-      armReveal(img, entry);
-      for (const type of POINTER_EVENTS) cover.addEventListener(type, blockPointer, true);
-    }
+    for (const type of POINTER_EVENTS) cover.addEventListener(type, blockPointer, true);
+    armReveal(img, entry);
 
     const observer = new ResizeObserver(() => positionCover(img));
     observer.observe(img);
@@ -238,18 +222,6 @@
     );
   }
 
-  function upgradeCover(entry) {
-    entry.checking = false;
-    const { cover } = entry;
-
-    cover.classList.remove("sift-cover-checking");
-    for (const type of POINTER_EVENTS) cover.removeEventListener(type, blockPointer, true);
-
-    cover.querySelector(".sift-cover-badge span:last-child").textContent = "blocked by sift";
-    cover.querySelector(".sift-cover-hint").textContent = "tap to peek";
-    armReveal(entry.img, entry);
-  }
-
   function removeCover(img) {
     const entry = covers.get(img);
     if (!entry) return;
@@ -275,6 +247,15 @@
   /* ------------------------------------------------------------------ */
   /* blur / reveal                                                       */
   /* ------------------------------------------------------------------ */
+
+  function unguardAnchor(img) {
+    const anchor = img.closest("a");
+    if (anchor && anchor.dataset.siftGuard === "1") {
+      anchor.removeEventListener("click", onGuardedAnchor, true);
+      anchor.removeEventListener("keydown", onGuardedAnchorKey, true);
+      delete anchor.dataset.siftGuard;
+    }
+  }
 
   function blurImage(img, verdict) {
     if (img.dataset.siftBlurred === "1") return;
@@ -328,6 +309,20 @@
     img.dataset.siftRevealed = "1";
     img.removeEventListener("click", onBlurredClick, true);
     for (const type of POINTER_EVENTS) img.removeEventListener(type, blockPointer, true);
+    img.removeAttribute("title");
+    unguardAnchor(img);
+    removeCover(img);
+  }
+
+  /* Full teardown: used when Sift is switched off (or paused for this
+   * site) while the page is open. Everything goes back to how it was. */
+  function teardownImage(img) {
+    img.classList.remove("sift-blurred");
+    img.removeEventListener("click", onBlurredClick, true);
+    for (const type of POINTER_EVENTS) img.removeEventListener(type, blockPointer, true);
+    unguardAnchor(img);
+    if (img.dataset.siftBlurred) delete img.dataset.siftBlurred;
+    if (img.dataset.siftRevealed) delete img.dataset.siftRevealed;
     img.removeAttribute("title");
     removeCover(img);
   }
@@ -390,18 +385,18 @@
   }
 
   function observe(img) {
-    if (!enabled || flagged) return;
+    if (!running || flagged) return;
     if (!(img instanceof HTMLImageElement)) return;
-    if (scored.has(img)) return;
+    if (scored.has(img) || inFlight.has(img)) return;
     if (img.dataset.siftBlurred === "1" || img.dataset.siftRevealed === "1") return;
 
     io.observe(img);
   }
 
   function enqueue(img, inView = true) {
-    if (!enabled || flagged) return;
+    if (!running || flagged) return;
     if (!(img instanceof HTMLImageElement)) return;
-    if (scored.has(img)) return;
+    if (scored.has(img) || inFlight.has(img)) return;
     if (img.dataset.siftBlurred === "1" || img.dataset.siftRevealed === "1") return;
 
     if (img.naturalWidth === 0) {
@@ -409,8 +404,8 @@
       return;
     }
 
-    // Instant local pre-block: known generators and AI alt text never
-    // need the network.
+    // Instant local pre-block: a known generator host never needs the
+    // network.
     const local = localVerdict(img);
     if (local) {
       scored.add(img);
@@ -419,16 +414,19 @@
     }
 
     if (!isScorableImage(img)) return;
-    if (scoreCalls >= MAX_SCORE_CALLS) return;
 
-    scored.add(img);
-    scoreCalls += 1;
+    // Two budgets: what the reader can already see keeps scoring as they
+    // scroll; only the look-ahead shares the small prefetch budget, so
+    // the free tier stays sane but scrolling never goes dead.
+    if (inView) {
+      if (inviewBudget <= 0) return;
+      inviewBudget -= 1;
+    } else {
+      if (prefetchBudget <= 0) return;
+      prefetchBudget -= 1;
+    }
 
-    // Cover what the reader can already see, then resolve it from the
-    // batched verdict. Images further out are scored silently so the
-    // verdict is ready before they scroll in.
-    if (inView && checkingCount() < MAX_CHECKING) addCover(img, true);
-
+    inFlight.add(img);
     pending.push({
       img,
       src: img.currentSrc || img.src || "",
@@ -453,10 +451,11 @@
       clearTimeout(batchTimer);
       batchTimer = null;
     }
-    if (!pending.length || !enabled || flagged) return;
+    if (!pending.length || !running || flagged) return;
 
     const chunk = pending.splice(0, BATCH_SIZE);
     flushing = true;
+    const retries = [];
 
     try {
       const reply = await send({
@@ -471,26 +470,42 @@
       }
 
       for (const item of chunk) {
-        const verdict = bySrc.get(item.src);
-        const entry = covers.get(item.img);
+        inFlight.delete(item.img);
 
         if (flagged) continue; // blurAll already handled every image
 
+        const verdict = bySrc.get(item.src);
+
         if (!verdict || verdict.ok === false) {
-          // Fail open, and do not leave the reader staring at a spinner.
-          if (entry && entry.checking) removeCover(item.img);
+          // Transient failure (service-worker cold start, timeout, 5xx):
+          // retry a couple of times before giving up quietly.
+          const tries = (attempts.get(item.img) || 0) + 1;
+          attempts.set(item.img, tries);
+          if (tries < MAX_RETRIES) retries.push(item);
+          else scored.add(item.img);
           continue;
         }
 
-        if (verdict.blur) {
-          blurImage(item.img, verdict);
-        } else if (entry && entry.checking) {
-          removeCover(item.img);
-        }
+        scored.add(item.img);
+        if (verdict.blur) blurImage(item.img, verdict);
       }
     } finally {
       flushing = false;
-      if (pending.length && !flagged) scheduleBatch();
+
+      if (retries.length && running && !flagged) {
+        retryQueue.push(...retries);
+        if (!retryTimer) {
+          retryTimer = setTimeout(() => {
+            retryTimer = null;
+            if (!running || flagged || !retryQueue.length) return;
+            pending.push(...retryQueue.splice(0));
+            if (pending.length >= BATCH_SIZE) flushBatch();
+            else scheduleBatch();
+          }, RETRY_DELAY_MS);
+        }
+      }
+
+      if (pending.length && running && !flagged) scheduleBatch();
     }
   }
 
@@ -501,12 +516,12 @@
         io.unobserve(entry.target);
 
         const img = entry.target;
-        if (scored.has(img)) continue;
+        if (scored.has(img) || inFlight.has(img)) continue;
         if (img.dataset.siftBlurred === "1" || img.dataset.siftRevealed === "1") continue;
 
         // The observer fires one to two viewports early (prefetch margin).
-        // What the reader can already see gets a checking cover; the rest
-        // is scored silently so a verdict is waiting before it scrolls in.
+        // Those images score into the small prefetch budget; what the
+        // reader can already see draws on the large in-view budget.
         const rect = img.getBoundingClientRect();
         const inView =
           rect.top < window.innerHeight + 100 &&
@@ -525,13 +540,13 @@
   /* ------------------------------------------------------------------ */
 
   function scan(root) {
-    if (!enabled) return;
+    if (!running) return;
     const scope = root && root.querySelectorAll ? root : document;
     for (const img of scope.querySelectorAll("img")) observe(img);
   }
 
   function watchDom() {
-    const observer = new MutationObserver((mutations) => {
+    domObserver = new MutationObserver((mutations) => {
       for (const mutation of mutations) {
         for (const node of mutation.addedNodes) {
           if (node.nodeType !== 1) continue;
@@ -557,7 +572,7 @@
       }
     });
 
-    observer.observe(document.documentElement, { childList: true, subtree: true });
+    domObserver.observe(document.documentElement, { childList: true, subtree: true });
   }
 
   /* ------------------------------------------------------------------ */
@@ -565,14 +580,23 @@
   /* ------------------------------------------------------------------ */
 
   document.addEventListener("sift:verdict", (event) => {
-    if (!enabled) return;
-
     const verdict = event.detail;
     if (!verdict || !verdict.blur) return;
+    // A forced demo verdict may start the shield even when it is off.
+    if (!running && !verdict.demo) return;
 
     flagged = true;
     lastVerdict = verdict;
     pending.length = 0;
+    retryQueue.length = 0;
+    if (batchTimer) {
+      clearTimeout(batchTimer);
+      batchTimer = null;
+    }
+    if (retryTimer) {
+      clearTimeout(retryTimer);
+      retryTimer = null;
+    }
     blurAll(verdict);
   });
 
@@ -586,6 +610,7 @@
    * document-level capture handler, which no listener on the cover itself
    * can stop. Registered first, this gate intercepts every pointer event
    * aimed at a covered or blurred image before the page can act on it.
+   * It is a no-op while no covers exist, so disabled sites pay nothing.
    */
   let gateArmed = false;
 
@@ -602,7 +627,7 @@
       if (event.type === "click") {
         for (const [img, entry] of covers) {
           if (entry.cover === coverHit) {
-            if (!entry.checking) unblur(img);
+            unblur(img);
             break;
           }
         }
@@ -626,37 +651,77 @@
   }
 
   /* ------------------------------------------------------------------ */
-  /* boot                                                                */
+  /* settings: start / stop without reloading the page                   */
   /* ------------------------------------------------------------------ */
 
-  async function boot() {
-    // Read settings directly. This avoids waking the service worker just to
-    // ask whether Sift is on.
+  function siteDisabled(stored) {
+    return Array.isArray(stored.disabledSites) && stored.disabledSites.includes(location.origin);
+  }
+
+  function shouldRun(stored) {
+    // Opt-in: the extension is off until it is switched on in the popup.
+    return stored.enabled === true && stored.blurImages !== false && !siteDisabled(stored);
+  }
+
+  async function applySettings() {
     let stored = {};
     try {
-      stored = await chrome.storage.local.get(["enabled", "blurImages"]);
+      stored = await chrome.storage.local.get(["enabled", "blurImages", "disabledSites"]);
     } catch {
       stored = {};
     }
 
-    enabled = stored.enabled !== false && stored.blurImages !== false;
-    if (!enabled) return;
+    const want = shouldRun(stored);
+    if (want && !running) startShield();
+    else if (!want && running) stopShield();
+  }
 
+  function startShield() {
+    if (running) return;
+    running = true;
     scan(document);
     watchDom();
   }
 
+  function stopShield() {
+    if (!running) return;
+    running = false;
+    flagged = false;
+    lastVerdict = null;
+    pending.length = 0;
+    retryQueue.length = 0;
+    if (batchTimer) {
+      clearTimeout(batchTimer);
+      batchTimer = null;
+    }
+    if (retryTimer) {
+      clearTimeout(retryTimer);
+      retryTimer = null;
+    }
+    if (domObserver) {
+      domObserver.disconnect();
+      domObserver = null;
+    }
+    io.disconnect();
+    for (const img of [...covers.keys()]) removeCover(img);
+    for (const img of document.querySelectorAll("img.sift-blurred")) teardownImage(img);
+  }
+
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== "local") return;
-    if (changes.enabled || changes.blurImages) location.reload();
+    if (changes.enabled || changes.blurImages || changes.disabledSites) applySettings();
   });
+
+  /* ------------------------------------------------------------------ */
+  /* boot                                                                */
+  /* ------------------------------------------------------------------ */
 
   // The gate must exist before the page's own scripts register theirs.
   armGate();
 
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", boot, { once: true });
+    document.addEventListener("DOMContentLoaded", applySettings, { once: true });
   } else {
-    boot();
+    applySettings();
   }
 })();

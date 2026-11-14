@@ -113,7 +113,7 @@ function normalize(results, count) {
     return {
       ai,
       confidence,
-      blur: ai >= 0.75 && confidence !== "low",
+      blur: (ai >= 0.7 && confidence !== "low") || ai >= 0.85,
     };
   });
 }

@@ -55,7 +55,8 @@
           blur: true,
           category: "synthetic",
           confidence: "high",
-          reasons: ["demo mode"]
+          reasons: ["demo mode"],
+          demo: true
         }
       })
     );

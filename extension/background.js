@@ -23,6 +23,8 @@ const IMAGE_URL = "https://sift-steel.vercel.app/api/score-image";
 const PAGE_TIMEOUT_MS = 15000;
 const IMAGE_TIMEOUT_MS = 15000;
 const PAGE_CACHE_LIMIT = 200;
+const PAGE_CACHE_KEY = "siftPageVerdicts";
+const PAGE_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const IMAGE_CACHE_KEY = "siftImageVerdicts";
 const IMAGE_CACHE_MAX = 600;
 const IMAGE_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -40,16 +42,28 @@ const imageCache = new Map(); // "u:<url>" or "h:<hash>" -> { verdict, ts }
 
 const cacheReady = (async () => {
   try {
-    const stored = await chrome.storage.local.get(IMAGE_CACHE_KEY);
-    const saved = stored && stored[IMAGE_CACHE_KEY];
-    if (!saved || typeof saved !== "object") return;
+    const stored = await chrome.storage.local.get([IMAGE_CACHE_KEY, PAGE_CACHE_KEY]);
 
     const now = Date.now();
-    for (const [key, entry] of Object.entries(saved)) {
-      if (imageCache.size >= IMAGE_CACHE_MAX) break;
-      if (!entry || typeof entry !== "object" || !entry.verdict) continue;
-      if (typeof entry.ts !== "number" || now - entry.ts > IMAGE_CACHE_TTL_MS) continue;
-      imageCache.set(key, entry);
+
+    const saved = stored && stored[IMAGE_CACHE_KEY];
+    if (saved && typeof saved === "object") {
+      for (const [key, entry] of Object.entries(saved)) {
+        if (imageCache.size >= IMAGE_CACHE_MAX) break;
+        if (!entry || typeof entry !== "object" || !entry.verdict) continue;
+        if (typeof entry.ts !== "number" || now - entry.ts > IMAGE_CACHE_TTL_MS) continue;
+        imageCache.set(key, entry);
+      }
+    }
+
+    const savedPages = stored && stored[PAGE_CACHE_KEY];
+    if (savedPages && typeof savedPages === "object") {
+      for (const [key, entry] of Object.entries(savedPages)) {
+        if (pageCache.size >= PAGE_CACHE_LIMIT) break;
+        if (!entry || typeof entry !== "object" || !entry.verdict) continue;
+        if (typeof entry.ts !== "number" || now - entry.ts > PAGE_CACHE_TTL_MS) continue;
+        pageCache.set(key, entry.verdict);
+      }
     }
   } catch {
     /* cache is an optimisation; never fail because of it */
@@ -74,6 +88,30 @@ function scheduleCachePersist() {
 
     try {
       await chrome.storage.local.set({ [IMAGE_CACHE_KEY]: saved });
+    } catch {
+      /* ignore */
+    }
+  }, 800);
+}
+
+let pagePersistTimer = null;
+
+function schedulePagePersist() {
+  if (pagePersistTimer) return;
+
+  pagePersistTimer = setTimeout(async () => {
+    pagePersistTimer = null;
+
+    const saved = {};
+    let count = 0;
+    for (const [key, verdict] of pageCache) {
+      if (count >= PAGE_CACHE_LIMIT) break;
+      saved[key] = { verdict, ts: Date.now() };
+      count += 1;
+    }
+
+    try {
+      await chrome.storage.local.set({ [PAGE_CACHE_KEY]: saved });
     } catch {
       /* ignore */
     }
@@ -149,7 +187,7 @@ function freshStats() {
 async function getState() {
   const stored = await chrome.storage.local.get(["enabled", "blurImages", "stats"]);
   return {
-    enabled: stored.enabled ?? true,
+    enabled: stored.enabled ?? false,
     blurImages: stored.blurImages ?? true,
     stats: stored.stats && stored.stats.week === weekKey() ? stored.stats : freshStats()
   };
@@ -197,6 +235,7 @@ async function scorePage(msg) {
 
     if (pageCache.size >= PAGE_CACHE_LIMIT) pageCache.clear();
     pageCache.set(key, verdict);
+    schedulePagePersist();
     return verdict;
   } catch (e) {
     return { ok: false, blur: false, error: String((e && e.message) || e) };
@@ -492,13 +531,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 /* lifecycle                                                           */
 /* ------------------------------------------------------------------ */
 
-chrome.runtime.onInstalled.addListener(async () => {
-  const stored = await chrome.storage.local.get(["enabled", "blurImages"]);
-  const patch = {};
-  if (stored.enabled === undefined) patch.enabled = true;
-  if (stored.blurImages === undefined) patch.blurImages = true;
-  if (Object.keys(patch).length) await chrome.storage.local.set(patch);
-});
+/* Sift is opt-in: nothing is force-enabled on install. The popup is
+ * where the reader (or the carer) turns it on. */
 
 chrome.runtime.onStartup.addListener(async () => {
   const { stats } = await getState();
