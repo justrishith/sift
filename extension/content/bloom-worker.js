@@ -4,17 +4,19 @@
  * Runs the Sift Bloom ONNX model on-device via ONNX Runtime Web, inside a
  * Web Worker so image scoring never blocks the page's main thread.
  *
- *   - Loads onnxruntime-web from jsDelivr CDN
+ *   - Imports onnxruntime-web from a bundled local copy (no CDN — Chrome's
+ *     extension CSP refuses remote scripts in the worker)
  *   - Downloads bloom.onnx from sift-steel.vercel.app on first use
  *   - Caches the model in IndexedDB so subsequent loads are instant
  *   - Falls back to null on any failure (caller falls back to remote API)
  *
+ * The content script passes every URL in the "init" message, so the worker
+ * itself needs no chrome.* APIs.
+ *
  * Input tensor name: "pixels" [1, 3, 192, 192], ImageNet normalization.
- * Output: "logits" [2] -> softmax -> P(synthetic) = ai.
+ * Output: "logits" [2] -> softmax -> P(synthetic) = class 1 = ai.
  */
 
-const BLOOM_URL = "https://sift-steel.vercel.app/bloom.onnx";
-const ORN_CDN = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.0/dist/ort.min.js";
 const DB_NAME = "sift-bloom";
 const DB_STORE = "models";
 const MODEL_KEY = "bloom-onnx";
@@ -26,6 +28,9 @@ let ort = null;
 let session = null;
 let initPromise = null;
 let db = null;
+let modelUrl = "";
+let ortUrl = "";
+let wasmBase = "";
 
 function openDb() {
   return new Promise((resolve, reject) => {
@@ -61,14 +66,23 @@ async function putModelBuffer(buffer) {
   });
 }
 
-async function init() {
+async function init(ortUrl_, wasmBase_, modelUrl_) {
   if (initPromise) return initPromise;
+  ortUrl = ortUrl_;
+  wasmBase = wasmBase_;
+  modelUrl = modelUrl_;
   initPromise = (async () => {
-    await importScripts(ORN_CDN);
+    await importScripts(ortUrl);
     ort = self.ort;
+    // Pages are not crossOriginIsolated, so SharedArrayBuffer threading is
+    // off the table. Single-threaded SIMD is fast enough (~30 ms).
+    ort.env.wasm.wasmPaths = wasmBase;
+    ort.env.wasm.numThreads = 1;
+    ort.env.wasm.proxy = false;
+
     let buffer = await getModelBuffer();
     if (!buffer) {
-      const res = await fetch(BLOOM_URL);
+      const res = await fetch(modelUrl);
       if (!res.ok) throw new Error(`model ${res.status}`);
       buffer = await res.arrayBuffer();
       await putModelBuffer(buffer);
@@ -90,17 +104,15 @@ function preprocessFromBitmap(bitmap) {
   ctx.drawImage(bitmap, left, top, side, side, 0, 0, INPUT_SIDE, INPUT_SIDE);
   const data = ctx.getImageData(0, 0, INPUT_SIDE, INPUT_SIDE).data;
 
-  const tensor = new Float32Array(1 * 3 * INPUT_SIDE * INPUT_SIDE);
+  const plane = INPUT_SIDE * INPUT_SIDE;
+  const tensor = new Float32Array(1 * 3 * plane);
   let idx = 0;
-  for (let y = 0; y < INPUT_SIDE; y++) {
-    for (let x = 0; x < INPUT_SIDE; x++) {
+  for (let y = 0; y < INPUT_SIDE; y += 1) {
+    for (let x = 0; x < INPUT_SIDE; x += 1) {
       const offset = (y * INPUT_SIDE + x) * 4;
-      const r = data[offset] / 255;
-      const g = data[offset + 1] / 255;
-      const b = data[offset + 2] / 255;
-      tensor[idx] = (r - MEAN[0]) / STD[0];
-      tensor[idx + INPUT_SIDE * INPUT_SIDE] = (g - MEAN[1]) / STD[1];
-      tensor[idx + 2 * INPUT_SIDE * INPUT_SIDE] = (b - MEAN[2]) / STD[2];
+      tensor[idx] = (data[offset] / 255 - MEAN[0]) / STD[0];
+      tensor[idx + plane] = (data[offset + 1] / 255 - MEAN[1]) / STD[1];
+      tensor[idx + 2 * plane] = (data[offset + 2] / 255 - MEAN[2]) / STD[2];
       idx += 1;
     }
   }
@@ -119,10 +131,10 @@ function shouldBlur(ai, confidence) {
 }
 
 self.onmessage = async (e) => {
-  const { type } = e.data || {};
+  const { type, id } = e.data || {};
   if (type === "init") {
     try {
-      await init();
+      await init(e.data.ortUrl, e.data.wasmBase, e.data.modelUrl);
       self.postMessage({ type: "ready", ok: true });
     } catch (err) {
       self.postMessage({ type: "ready", ok: false, error: String(err) });
@@ -131,12 +143,11 @@ self.onmessage = async (e) => {
   }
   if (type === "score") {
     try {
-      await init();
+      await init(ortUrl, wasmBase, modelUrl);
       const bitmap = await createImageBitmap(e.data.bitmap);
       const tensor = preprocessFromBitmap(bitmap);
       bitmap.close();
-      const feeds = { pixels: tensor };
-      const results = await session.run(feeds);
+      const results = await session.run({ pixels: tensor });
       const logits = results.logits.data;
       const m = Math.max(logits[0], logits[1]);
       const e0 = Math.exp(logits[0] - m);
@@ -145,13 +156,14 @@ self.onmessage = async (e) => {
       const confidence = confidenceFromAi(ai);
       self.postMessage({
         type: "result",
+        id,
         ok: true,
         ai,
         confidence,
         blur: shouldBlur(ai, confidence)
       });
     } catch (err) {
-      self.postMessage({ type: "result", ok: false, error: String(err) });
+      self.postMessage({ type: "result", id, ok: false, error: String(err) });
     }
   }
 };

@@ -61,17 +61,21 @@ function prettyHost(origin) {
 
 async function render() {
   const state = await getState();
-  const enabled = Boolean(state && state.enabled && state.blurImages);
+  // Match the background default: on unless the reader turned it off.
+  const enabled = state ? Boolean(state.enabled ?? true) && state.blurImages !== false : true;
 
   document.body.classList.toggle("on", enabled);
   document.body.classList.toggle("off", !enabled);
-  stateText.textContent = enabled ? "Sift is on" : "Sift is off";
+  stateText.textContent = enabled ? "On — checking every image" : "Off";
   toggle.checked = enabled;
 
   const n = state && state.stats ? state.stats.images : 0;
+  const p = state && state.stats ? state.stats.pages : 0;
   status.textContent = n
-    ? `${n} ${n === 1 ? "picture" : "pictures"} blurred this week`
-    : "No pictures blurred yet this week";
+    ? `${n} ${n === 1 ? "picture" : "pictures"} blurred this week · ${p} ${p === 1 ? "page" : "pages"} checked`
+    : p
+      ? `${p} ${p === 1 ? "page" : "pages"} checked this week — no pictures blurred yet`
+      : "No pictures blurred yet this week";
 
   const origin = await activeOrigin();
   if (!origin) {
@@ -89,7 +93,7 @@ async function render() {
     ? "Turn Sift on first"
     : paused
       ? "Paused here — nothing is checked on this site"
-      : "Sift is checking images here";
+      : "Sift checks every image here";
 }
 
 toggle.addEventListener("change", async () => {

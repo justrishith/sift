@@ -187,7 +187,8 @@ function freshStats() {
 async function getState() {
   const stored = await chrome.storage.local.get(["enabled", "blurImages", "stats"]);
   return {
-    enabled: stored.enabled ?? false,
+    // Opt-IN by default: Sift is on out of the box — no toggle needed.
+    enabled: stored.enabled ?? true,
     blurImages: stored.blurImages ?? true,
     stats: stored.stats && stored.stats.week === weekKey() ? stored.stats : freshStats()
   };
@@ -531,8 +532,27 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 /* lifecycle                                                           */
 /* ------------------------------------------------------------------ */
 
-/* Sift is opt-in: nothing is force-enabled on install. The popup is
- * where the reader (or the carer) turns it on. */
+/*
+ * Sift is ON by default since 0.7.1: it checks every image on-device with
+ * Bloom the moment it is installed or updated. Readers who deliberately
+ * turned it off stay off — their stored "enabled: false" is respected.
+ * The migration flag exists exactly once, so future updates never
+ * override a deliberate choice.
+ */
+
+chrome.runtime.onInstalled.addListener(async () => {
+  try {
+    const stored = await chrome.storage.local.get("siftV071Migrated");
+    if (stored.siftV071Migrated) return;
+    await chrome.storage.local.set({
+      enabled: true,
+      blurImages: true,
+      siftV071Migrated: true
+    });
+  } catch {
+    /* storage unavailable: defaults already treat undefined as on */
+  }
+});
 
 chrome.runtime.onStartup.addListener(async () => {
   const { stats } = await getState();

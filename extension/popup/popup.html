@@ -9,14 +9,15 @@
     --muted: #6f6685;
     --violet: #7c3aed;
     --violet-deep: #5b21b6;
-    --line: #e2daf2;
+    --line: #e6ddf5;
     --card: #ffffff;
     --bg: #faf8ff;
+    --green: #16a34a;
   }
   * { box-sizing: border-box; }
 
   body {
-    width: 312px;
+    width: 320px;
     margin: 0;
     background: var(--bg);
     color: var(--ink);
@@ -29,33 +30,33 @@
   header {
     display: flex;
     align-items: center;
-    gap: 11px;
-    padding: 16px 18px 14px;
-    background: linear-gradient(135deg, #f3ecff 0%, #faf8ff 70%);
+    gap: 12px;
+    padding: 18px 18px 16px;
+    background: linear-gradient(135deg, #ede4ff 0%, #faf8ff 72%);
     border-bottom: 1px solid var(--line);
   }
   .mark {
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     flex: none;
     display: grid;
     place-items: center;
-    border-radius: 13px;
+    border-radius: 14px;
     background: linear-gradient(135deg, #7c3aed, #a78bfa);
-    box-shadow: 0 6px 14px rgba(124, 58, 237, 0.35);
+    box-shadow: 0 8px 18px rgba(124, 58, 237, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.35);
   }
-  .mark img { width: 26px; height: 26px; }
+  .mark img { width: 28px; height: 28px; }
   header h1 {
     margin: 0;
-    font-size: 19px;
-    font-weight: 700;
+    font-size: 21px;
+    font-weight: 800;
     letter-spacing: -0.05em;
   }
   header h1 em { font-style: normal; color: var(--violet); }
   header p {
-    margin: 1px 0 0;
+    margin: 2px 0 0;
     color: var(--muted);
-    font-size: 11px;
+    font-size: 11.5px;
     letter-spacing: 0.02em;
   }
 
@@ -64,38 +65,53 @@
   .state {
     display: flex;
     align-items: center;
-    gap: 7px;
+    gap: 8px;
     margin: 12px 14px 0;
-    padding: 8px 12px;
+    padding: 9px 12px;
     border-radius: 999px;
-    font-size: 12px;
-    font-weight: 600;
+    font-size: 12.5px;
+    font-weight: 650;
   }
   .state .dot {
-    width: 8px;
-    height: 8px;
+    width: 9px;
+    height: 9px;
     border-radius: 50%;
     flex: none;
   }
   body.on .state {
-    background: #f1eafe;
-    color: var(--violet-deep);
+    background: #f0fdf4;
+    color: #15803d;
+    border: 1px solid #bbf7d0;
   }
-  body.on .state .dot { background: #22c55e; box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.18); }
+  body.on .state .dot {
+    background: var(--green);
+    box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.16);
+    animation: sift-pop-dot 2.4s ease-in-out infinite;
+  }
   body.off .state {
     background: #f3f0f7;
     color: var(--muted);
+    border: 1px solid #e4deee;
   }
-  body.off .state .dot { background: #b9b3c6; box-shadow: 0 0 0 3px rgba(185, 179, 198, 0.18); }
+  body.off .state .dot {
+    background: #b9b3c6;
+    box-shadow: 0 0 0 3px rgba(185, 179, 198, 0.18);
+  }
+
+  @keyframes sift-pop-dot {
+    0%, 100% { box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.16); }
+    50%      { box-shadow: 0 0 0 5px rgba(22, 163, 74, 0.10); }
+  }
 
   /* cards --------------------------------------------------------------- */
 
   section {
     margin: 10px 14px 0;
-    padding: 13px 14px;
+    padding: 14px;
     border: 1px solid var(--line);
-    border-radius: 14px;
+    border-radius: 16px;
     background: var(--card);
+    box-shadow: 0 1px 2px rgba(27, 16, 51, 0.04);
   }
 
   .row {
@@ -104,21 +120,22 @@
     justify-content: space-between;
     gap: 12px;
   }
-  .row .label { font-weight: 600; font-size: 13.5px; }
+  .row .label { font-weight: 650; font-size: 13.5px; }
   .row .sub {
     display: block;
-    margin-top: 2px;
+    margin-top: 3px;
     color: var(--muted);
     font-size: 11.5px;
     font-weight: 400;
+    line-height: 1.45;
   }
 
   /* switches ------------------------------------------------------------ */
 
   input[type="checkbox"] {
     appearance: none;
-    width: 44px;
-    height: 26px;
+    width: 46px;
+    height: 28px;
     border-radius: 999px;
     background: #ddd5ee;
     position: relative;
@@ -132,11 +149,11 @@
     position: absolute;
     top: 3px;
     left: 3px;
-    width: 20px;
-    height: 20px;
+    width: 22px;
+    height: 22px;
     border-radius: 50%;
     background: #fff;
-    box-shadow: 0 1px 3px rgba(27, 16, 51, 0.25);
+    box-shadow: 0 1px 3px rgba(27, 16, 51, 0.28);
     transition: transform 140ms ease;
   }
   input[type="checkbox"]:checked { background: var(--violet); }
@@ -150,7 +167,7 @@
   /* divider inside the site card */
   .site-name {
     color: var(--violet-deep);
-    font-weight: 650;
+    font-weight: 700;
   }
 
   /* stats ---------------------------------------------------------------- */
@@ -160,8 +177,9 @@
     padding: 0 4px;
     color: var(--muted);
     font-size: 12px;
-    line-height: 1.5;
+    line-height: 1.55;
   }
+  #status strong { color: var(--ink); font-weight: 700; }
 
   /* call to action -------------------------------------------------------- */
 
@@ -169,7 +187,7 @@
     display: none;
     margin: 12px 14px 0;
     width: calc(100% - 28px);
-    padding: 12px;
+    padding: 13px;
     border: 0;
     border-radius: 999px;
     background: linear-gradient(120deg, #5b21b6, #7c3aed 60%, #a78bfa);
@@ -179,7 +197,7 @@
     font-family: inherit;
     letter-spacing: 0.01em;
     cursor: pointer;
-    box-shadow: 0 8px 18px rgba(124, 58, 237, 0.35);
+    box-shadow: 0 10px 20px rgba(124, 58, 237, 0.32);
   }
   #turn-on:hover { filter: brightness(1.06); }
   body.off #turn-on { display: block; }
@@ -190,8 +208,8 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px 18px 14px;
-    margin-top: 8px;
+    padding: 13px 18px 15px;
+    margin-top: 6px;
   }
   footer a {
     color: var(--violet);
@@ -219,7 +237,7 @@
     <label class="row">
       <span class="label">
         Blur AI images
-        <span class="sub">Covers pictures that look AI-generated</span>
+        <span class="sub">Sift Bloom checks every picture on this device — nothing is uploaded</span>
       </span>
       <input id="toggle" type="checkbox" aria-label="Blur AI images">
     </label>
@@ -241,7 +259,7 @@
 
   <footer>
     <a href="https://sift-steel.vercel.app/slop.html#sift-demo" target="_blank" rel="noopener">Open the demo</a>
-    <span>v0.6.0</span>
+    <span>v0.7.1 · Bloom on-device</span>
   </footer>
 
   <script src="popup.js"></script>

@@ -185,3 +185,61 @@ img.sift-blurred {
     opacity: 1;
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* "sift is checking" badge — every image Bloom is scoring             */
+/* Pill in the top-right corner of the picture; purely informational  */
+/* (pointer-events: none) so the page stays fully usable.             */
+/* ------------------------------------------------------------------ */
+
+img.sift-checking {
+  outline: 2px solid rgba(124, 58, 237, 0.38);
+  outline-offset: -2px;
+}
+
+.sift-checking-badge {
+  position: absolute;
+  z-index: 2147482999; /* under the blocked cover, above page content */
+  transform: translateX(-100%);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px 3px 5px;
+  border: 1px solid rgba(196, 181, 253, 0.7);
+  border-radius: 999px;
+  background: rgba(27, 16, 51, 0.78);
+  color: #efe9ff;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: sift-badge-pulse 1.4s ease-in-out infinite;
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.sift-checking-flower {
+  width: 13px;
+  height: 13px;
+}
+
+.sift-checking-out {
+  opacity: 0;
+  transform: translateX(-100%) scale(0.96);
+}
+
+@keyframes sift-badge-pulse {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 0.9; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  img.sift-checking,
+  .sift-checking-badge {
+    transition: none;
+    animation: none;
+  }
+}

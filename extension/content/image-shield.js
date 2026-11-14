@@ -5,19 +5,15 @@
  *   1. the page is judged AI slop  -> every content image gets a cover
  *   2. one image comes from a known generator host -> covered instantly
  *   3. one image is judged AI by Bloom (on-device) -> that image gets a cover
- *      Bloom is tried first; the remote Gemini API is the fallback for
- *      images Bloom can't read (cross-origin without CORS) or can't score.
+ *      Bloom runs first on EVERY image with no cap. The remote Gemini API
+ *      is only the fallback for images Bloom can't read (cross-origin /
+ *      no-CORS) or when Bloom itself fails.
  *
  * Images are scored silently. Nothing is covered until there is a
- * verdict, so ordinary pages (Google Images, news homepages) stay clean
- * and only AI pictures get a cover.
+ * verdict, so ordinary pages stay clean and only AI pictures get a cover.
  *
- * Two budgets keep the free tier sane without killing scrolling:
- *   - 36 images are scored one to two viewports ahead of the reader
- *   - 300 images the reader can actually see are scored as they appear
- *
- * Verdicts that fail are retried a couple of times before the image is
- * left alone, so a service-worker cold start cannot silence a page.
+ * Every image gets a "sift is checking" indicator while Bloom scores it —
+ * you can see Sift working on every picture, with no toggling and no cap.
  *
  * Blocked images get a soft lilac cover with a flower, a "blocked by
  * sift" badge, and a "tap to peek" hint. The first click can never
@@ -26,21 +22,22 @@
  * Sift fails open: no verdict means no blur.
  */
 
-import { scoreImage as bloomScoreImage } from "./bloom-scorer.js";
-
 "use strict";
 
 const BLUR_MIN_EDGE = 120;    // page verdict: skip icons, avatars, sprites
 const SCORE_MIN_WIDTH = 128;  // per-image vision: covers grid thumbnails
 const SCORE_MIN_HEIGHT = 96;
 const MAX_BLUR_IMAGES = 120;
-const PREFETCH_BUDGET = 36;   // images scored ahead of the viewport per page
-const INVIEW_BUDGET = 300;    // images scored while the reader can see them
 const BATCH_SIZE = 6;
 const BATCH_DELAY_MS = 120;
 const PREFETCH_MARGIN = "1000px 0px 1000px 0px"; // score 1-2 viewports early
 const MAX_RETRIES = 2;
 const RETRY_DELAY_MS = 4000;
+
+// Remote-API budget only (Gemini costs money). Bloom is local and free, so
+// it scores every image with no cap.
+const PREFETCH_BUDGET = 36;   // remote-API look-ahead per page
+const INVIEW_BUDGET = 300;    // remote-API in-view per page
 
 /*
  * Instant local pre-block, narrowed to the one high-precision signal:
@@ -56,10 +53,11 @@ function localVerdict(img) {
 }
 
 const covers = new Map();
+const checkingBadges = new Map(); // img -> { badge, parent } — "sift is checking"
 const positionedParents = new Map();
 const scored = new WeakSet();    // reached a final verdict (or gave up)
-const inFlight = new WeakSet();  // waiting on a batch verdict
-const attempts = new WeakMap();  // failed batch tries per image
+const inFlight = new WeakSet();  // waiting on a remote-API batch verdict
+const attempts = new WeakMap();  // failed remote-API tries per image
 const pending = [];
 const retryQueue = [];
 
@@ -239,10 +237,60 @@ function removeCover(img) {
   covers.delete(img);
 }
 
+function positionBadge(img) {
+  const entry = checkingBadges.get(img);
+  if (!entry) return;
+
+  const { badge, parent } = entry;
+  const rect = img.getBoundingClientRect();
+  const parentRect = parent.getBoundingClientRect();
+
+  badge.style.left = `${rect.right - parentRect.left + parent.scrollLeft - 8}px`;
+  badge.style.top = `${rect.top - parentRect.top + parent.scrollTop + 8}px`;
+}
+
+function addCheckingBadge(img) {
+  if (checkingBadges.has(img)) return;
+  const parent = img.parentElement;
+  if (!parent) return;
+
+  const badge = document.createElement("span");
+  badge.className = "sift-checking-badge";
+  const mark = flower();
+  mark.className = "sift-checking-flower";
+  const label = document.createElement("span");
+  label.textContent = "sift is checking";
+  badge.append(mark, label);
+
+  const entry = { badge, parent, observer: null };
+  checkingBadges.set(img, entry);
+
+  positionParent(parent);
+  parent.appendChild(badge);
+  positionBadge(img);
+
+  entry.observer = new ResizeObserver(() => positionBadge(img));
+  entry.observer.observe(img);
+}
+
+function removeCheckingBadge(img) {
+  const entry = checkingBadges.get(img);
+  if (!entry) return;
+
+  entry.observer.disconnect();
+  entry.badge.classList.add("sift-checking-out");
+  const badge = entry.badge;
+  window.setTimeout(() => badge.remove(), 190);
+
+  unpositionParent(entry.parent);
+  checkingBadges.delete(img);
+}
+
 window.addEventListener(
   "resize",
   () => {
     for (const img of covers.keys()) positionCover(img);
+    for (const img of checkingBadges.keys()) positionBadge(img);
   },
   { passive: true }
 );
@@ -263,8 +311,10 @@ function unguardAnchor(img) {
 function blurImage(img, verdict) {
   if (img.dataset.siftBlurred === "1") return;
 
+  removeCheckingBadge(img);
   img.dataset.siftBlurred = "1";
   img.classList.add("sift-blurred");
+  img.classList.remove("sift-checking");
   img.setAttribute("title", "Sift: this picture may be AI-generated. Click to reveal it.");
 
   // Capture phase + preventDefault means the first click can never
@@ -309,6 +359,7 @@ function onGuardedAnchorKey(event) {
 
 function unblur(img) {
   img.classList.remove("sift-blurred");
+  img.classList.remove("sift-checking");
   img.dataset.siftRevealed = "1";
   img.removeEventListener("click", onBlurredClick, true);
   for (const type of POINTER_EVENTS) img.removeEventListener(type, blockPointer, true);
@@ -321,6 +372,7 @@ function unblur(img) {
  * site) while the page is open. Everything goes back to how it was. */
 function teardownImage(img) {
   img.classList.remove("sift-blurred");
+  img.classList.remove("sift-checking");
   img.removeEventListener("click", onBlurredClick, true);
   for (const type of POINTER_EVENTS) img.removeEventListener(type, blockPointer, true);
   unguardAnchor(img);
@@ -418,9 +470,24 @@ async function enqueue(img, inView = true) {
 
   if (!isScorableImage(img)) return;
 
-  // Two budgets: what the reader can already see keeps scoring as they
-  // scroll; only the look-ahead shares the small prefetch budget, so
-  // the free tier stays sane but scrolling never goes dead.
+  // Bloom on-device scoring — NO CAP, every image gets checked.
+  // The "sift is checking" badge shows on every image while Bloom works.
+  img.classList.add("sift-checking");
+  addCheckingBadge(img);
+  const bloom = window.SiftBloom
+    ? await window.SiftBloom.scoreImage(img)
+    : { ok: false, error: "bloom-missing" };
+  removeCheckingBadge(img);
+  img.classList.remove("sift-checking");
+
+  if (bloom.ok) {
+    scored.add(img);
+    if (bloom.blur) blurImage(img, bloom);
+    return;
+  }
+
+  // Bloom unavailable (cross-origin / no CORS) → remote Gemini API fallback.
+  // Budget applies here because remote calls cost money.
   if (inView) {
     if (inviewBudget <= 0) return;
     inviewBudget -= 1;
@@ -429,16 +496,6 @@ async function enqueue(img, inView = true) {
     prefetchBudget -= 1;
   }
 
-  // Bloom on-device scoring first; remote API is the fallback.
-  const bloom = await bloomScoreImage(img);
-  if (bloom.ok) {
-    scored.add(img);
-    if (bloom.blur) blurImage(img, bloom);
-    return;
-  }
-
-  // Bloom unavailable or failed (e.g. cross-origin image without CORS):
-  // fall back to the remote Gemini API batch.
   inFlight.add(img);
   pending.push({
     img,
@@ -533,8 +590,6 @@ const io = new IntersectionObserver(
       if (img.dataset.siftBlurred === "1" || img.dataset.siftRevealed === "1") continue;
 
       // The observer fires one to two viewports early (prefetch margin).
-      // Those images score into the small prefetch budget; what the
-      // reader can already see draws on the large in-view budget.
       const rect = img.getBoundingClientRect();
       const inView =
         rect.top < window.innerHeight + 100 &&
@@ -672,7 +727,8 @@ function siteDisabled(stored) {
 }
 
 function shouldRun(stored) {
-  // Opt-in: the extension is off until it is switched on in the popup.
+  // Opt-in: the extension is on by default; the reader turns it off in
+  // the popup if they want.
   return stored.enabled === true && stored.blurImages !== false && !siteDisabled(stored);
 }
 
@@ -717,7 +773,10 @@ function stopShield() {
   }
   io.disconnect();
   for (const img of [...covers.keys()]) removeCover(img);
+  for (const img of [...checkingBadges.keys()]) removeCheckingBadge(img);
   for (const img of document.querySelectorAll("img.sift-blurred")) teardownImage(img);
+  for (const img of document.querySelectorAll("img.sift-checking"))
+    img.classList.remove("sift-checking");
 }
 
 chrome.storage.onChanged.addListener((changes, area) => {

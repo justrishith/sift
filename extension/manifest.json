@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "Sift",
   "short_name": "Sift",
-  "version": "0.7.0",
-  "description": "Blurs AI-generated images in news articles so they cannot mislead you. Runs the Sift Bloom model on-device with a remote Gemini fallback.",
+  "version": "0.7.1",
+  "description": "Blurs AI-generated images in news articles so they cannot mislead you. Sift Bloom runs on-device on every image — no toggling, no caps — with a remote Gemini fallback.",
   "minimum_chrome_version": "121",
 
   "permissions": ["storage", "activeTab"],
@@ -44,7 +44,7 @@
     },
     {
       "matches": ["<all_urls>"],
-      "js": ["content/image-shield.js"],
+      "js": ["content/bloom-scorer.js", "content/image-shield.js"],
       "css": ["content/image-shield.css"],
       "run_at": "document_start"
     }
@@ -52,12 +52,16 @@
 
   "web_accessible_resources": [
     {
-      "resources": ["icons/*", "content/bloom-worker.js"],
+      "resources": [
+        "icons/*",
+        "content/bloom-worker.js",
+        "vendor/onnx/*"
+      ],
       "matches": ["<all_urls>"]
     }
   ],
 
   "content_security_policy": {
-    "extension_pages": "script-src 'self' https://cdn.jsdelivr.net; object-src 'self';"
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';"
   }
 }
