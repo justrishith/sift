@@ -829,9 +829,10 @@ function siteDisabled(stored) {
 }
 
 function shouldRun(stored) {
-  // Opt-in: the extension is on by default; the reader turns it off in
-  // the popup if they want.
-  return stored.enabled === true && stored.blurImages !== false && !siteDisabled(stored);
+  // On by default — the reader turns it off in the popup if they want.
+  // A failed storage read must not brick the shield, so the default is
+  // "run unless explicitly disabled" rather than "run only if stored true".
+  return stored.enabled !== false && stored.blurImages !== false && !siteDisabled(stored);
 }
 
 async function applySettings() {
