@@ -503,7 +503,9 @@ function isScorableImage(img) {
   if (width < SCAN_MIN_EDGE || height < SCAN_MIN_EDGE) return false;
 
   const src = img.currentSrc || img.src || "";
-  if (!/^https?:/.test(src)) return false;
+  // Bloom is local, so any decodable URL works — http(s), blob, data.
+  // SVG stays out: Bloom judges photos, not vector art.
+  if (!/^(https?|blob|data):/.test(src)) return false;
   if (/\.svg(\?|$)/i.test(src)) return false;
 
   return true;
@@ -560,12 +562,13 @@ async function enqueue(img, inView = true) {
     return;
   }
 
-  // Bloom unavailable (cross-origin / no CORS) → remote Gemini API fallback.
-  // The checking cover stays until the remote verdict lands. Budget applies
-  // here because remote calls cost money.
-  const budgetGone = inView
-    ? inviewBudget <= 0
-    : prefetchBudget <= 0;
+  // Bloom unavailable (local model missing / image undecodable) → remote
+  // Gemini API fallback. The checking cover stays until the verdict lands.
+  // Remote needs an http(s) URL the server can fetch; anything else fails open.
+  const remoteSrc = img.currentSrc || img.src || "";
+  const remoteable = /^https?:/.test(remoteSrc);
+  const budgetGone = !remoteable
+    || (inView ? inviewBudget <= 0 : prefetchBudget <= 0);
   if (budgetGone) {
     // Fail open: lift the cover, no badge, image goes back to normal.
     scored.add(img);
