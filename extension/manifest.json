@@ -2,13 +2,17 @@
   "manifest_version": 3,
   "name": "Sift",
   "short_name": "Sift",
-  "version": "0.6.0",
-  "description": "Blurs AI-generated images in news articles so they cannot mislead you.",
+  "version": "0.7.0",
+  "description": "Blurs AI-generated images in news articles so they cannot mislead you. Runs the Sift Bloom model on-device with a remote Gemini fallback.",
   "minimum_chrome_version": "121",
 
   "permissions": ["storage", "activeTab"],
 
-  "host_permissions": ["<all_urls>"],
+  "host_permissions": [
+    "<all_urls>",
+    "https://sift-steel.vercel.app/*",
+    "https://cdn.jsdelivr.net/*"
+  ],
 
   "background": {
     "service_worker": "background.js"
@@ -48,8 +52,12 @@
 
   "web_accessible_resources": [
     {
-      "resources": ["icons/*"],
+      "resources": ["icons/*", "content/bloom-worker.js"],
       "matches": ["<all_urls>"]
     }
-  ]
+  ],
+
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' https://cdn.jsdelivr.net; object-src 'self';"
+  }
 }
