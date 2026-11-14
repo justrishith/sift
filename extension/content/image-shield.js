@@ -1,23 +1,16 @@
 /*
  * Sift — image shield
  * -------------------
- * Three ways an image gets blocked:
- *   1. the page is judged AI slop  -> every content image gets a cover
- *   2. one image comes from a known generator host -> covered instantly
- *   3. one image is judged AI by Bloom (on-device) -> that image gets a cover
- *      Bloom runs first on EVERY image with no cap. The remote Gemini API
- *      is only the fallback for images Bloom can't read (cross-origin /
- *      no-CORS) or when Bloom itself fails.
+ * Every image on the page is covered the moment Sift sees it, with a
+ * "sift is checking" cover, then Bloom (on-device, no cap, no budget)
+ * resolves it one of two ways:
+ *   - real  -> the cover lifts and a green "sift · real" chip stays in
+ *              the corner so you know it was checked
+ *   - fake  -> the cover stays, blurred, with a "sift · fake" chip
  *
- * Images are scored silently. Nothing is covered until there is a
- * verdict, so ordinary pages stay clean and only AI pictures get a cover.
- *
- * Every image gets a "sift is checking" indicator while Bloom scores it —
- * you can see Sift working on every picture, with no toggling and no cap.
- *
- * Blocked images get a soft lilac cover with a flower, a "blocked by
- * sift" badge, and a "tap to peek" hint. The first click can never
- * follow the link behind the image.
+ * Images Bloom cannot read (cross-origin without CORS) fall back to the
+ * remote Gemini API batch; the checking cover stays on until the verdict
+ * lands. Generator hosts are covered instantly, no scan needed.
  *
  * Sift fails open: no verdict means no blur.
  */
@@ -25,8 +18,7 @@
 "use strict";
 
 const BLUR_MIN_EDGE = 120;    // page verdict: skip icons, avatars, sprites
-const SCORE_MIN_WIDTH = 128;  // per-image vision: covers grid thumbnails
-const SCORE_MIN_HEIGHT = 96;
+const SCAN_MIN_EDGE = 16;     // per-image: only skip invisible tracking pixels
 const MAX_BLUR_IMAGES = 120;
 const BATCH_SIZE = 6;
 const BATCH_DELAY_MS = 120;
@@ -52,8 +44,10 @@ function localVerdict(img) {
   return null;
 }
 
-const covers = new Map();
-const checkingBadges = new Map(); // img -> { badge, parent } — "sift is checking"
+const covers = new Map();          // blurred fake images
+const checkingCovers = new Map();  // images Bloom is scoring right now
+const verdictBadges = new Map();   // corner labels: "sift · real" / "sift · fake"
+const checking = new WeakSet();    // already enqueued, awaiting verdict
 const positionedParents = new Map();
 const scored = new WeakSet();    // reached a final verdict (or gave up)
 const inFlight = new WeakSet();  // waiting on a remote-API batch verdict
@@ -237,60 +231,129 @@ function removeCover(img) {
   covers.delete(img);
 }
 
-function positionBadge(img) {
-  const entry = checkingBadges.get(img);
+function positionChecking(img) {
+  const entry = checkingCovers.get(img);
   if (!entry) return;
 
-  const { badge, parent } = entry;
+  const { cover, parent } = entry;
   const rect = img.getBoundingClientRect();
   const parentRect = parent.getBoundingClientRect();
 
-  badge.style.left = `${rect.right - parentRect.left + parent.scrollLeft - 8}px`;
-  badge.style.top = `${rect.top - parentRect.top + parent.scrollTop + 8}px`;
+  cover.style.left = `${rect.left - parentRect.left + parent.scrollLeft}px`;
+  cover.style.top = `${rect.top - parentRect.top + parent.scrollTop}px`;
+  cover.style.width = `${rect.width}px`;
+  cover.style.height = `${rect.height}px`;
+
+  cover.classList.toggle("sift-cover-small", rect.width < 170 || rect.height < 140);
+  cover.classList.toggle("sift-cover-tiny", rect.width < 90 || rect.height < 70);
 }
 
-function addCheckingBadge(img) {
-  if (checkingBadges.has(img)) return;
+function addCheckingCover(img) {
+  if (checkingCovers.has(img)) return;
+  const parent = img.parentElement;
+  if (!parent) return;
+
+  const cover = document.createElement("div");
+  cover.className = "sift-cover sift-cover-checking";
+  // Transient and purely visual: the page stays fully usable while Bloom works.
+  cover.style.pointerEvents = "none";
+
+  const badge = document.createElement("span");
+  badge.className = "sift-cover-badge";
+  const badgeLabel = document.createElement("span");
+  badgeLabel.textContent = "sift is checking";
+  badge.append(flower(), badgeLabel);
+
+  const mark = flower();
+  mark.className = "sift-cover-mark";
+
+  cover.append(badge, mark);
+
+  const entry = { cover, parent, observer: null };
+  checkingCovers.set(img, entry);
+
+  positionParent(parent);
+  parent.appendChild(cover);
+  positionChecking(img);
+
+  entry.observer = new ResizeObserver(() => positionChecking(img));
+  entry.observer.observe(img);
+}
+
+function removeCheckingCover(img) {
+  const entry = checkingCovers.get(img);
+  if (!entry) return;
+
+  entry.observer.disconnect();
+  entry.cover.classList.add("sift-cover-out");
+  const cover = entry.cover;
+  window.setTimeout(() => cover.remove(), 190);
+
+  unpositionParent(entry.parent);
+  checkingCovers.delete(img);
+}
+
+function positionVerdict(img) {
+  const entry = verdictBadges.get(img);
+  if (!entry) return;
+
+  const { el, parent } = entry;
+  const rect = img.getBoundingClientRect();
+  const parentRect = parent.getBoundingClientRect();
+
+  el.style.left = `${rect.right - parentRect.left + parent.scrollLeft - 8}px`;
+  el.style.top = `${rect.bottom - parentRect.top + parent.scrollTop - 8}px`;
+}
+
+function addVerdictBadge(img, kind) {
+  removeVerdictBadge(img);
   const parent = img.parentElement;
   if (!parent) return;
 
   const badge = document.createElement("span");
-  badge.className = "sift-checking-badge";
+  badge.className = `sift-verdict sift-verdict-${kind}`;
+
   const mark = flower();
-  mark.className = "sift-checking-flower";
   const label = document.createElement("span");
-  label.textContent = "sift is checking";
+  label.textContent = kind === "real" ? "sift · real" : "sift · fake";
   badge.append(mark, label);
 
-  const entry = { badge, parent, observer: null };
-  checkingBadges.set(img, entry);
+  const entry = { el: badge, parent, observer: null };
+  verdictBadges.set(img, entry);
 
   positionParent(parent);
   parent.appendChild(badge);
-  positionBadge(img);
+  positionVerdict(img);
 
-  entry.observer = new ResizeObserver(() => positionBadge(img));
+  entry.observer = new ResizeObserver(() => positionVerdict(img));
   entry.observer.observe(img);
 }
 
-function removeCheckingBadge(img) {
-  const entry = checkingBadges.get(img);
+function removeVerdictBadge(img) {
+  const entry = verdictBadges.get(img);
   if (!entry) return;
 
   entry.observer.disconnect();
-  entry.badge.classList.add("sift-checking-out");
-  const badge = entry.badge;
-  window.setTimeout(() => badge.remove(), 190);
+  entry.el.remove();
 
   unpositionParent(entry.parent);
-  checkingBadges.delete(img);
+  verdictBadges.delete(img);
+}
+
+function revealReal(img) {
+  removeCheckingCover(img);
+  img.classList.remove("sift-checking");
+  checking.delete(img);
+  img.dataset.siftRevealed = "1";
+  addVerdictBadge(img, "real");
 }
 
 window.addEventListener(
   "resize",
   () => {
     for (const img of covers.keys()) positionCover(img);
-    for (const img of checkingBadges.keys()) positionBadge(img);
+    for (const img of checkingCovers.keys()) positionChecking(img);
+    for (const img of verdictBadges.keys()) positionVerdict(img);
   },
   { passive: true }
 );
@@ -311,10 +374,14 @@ function unguardAnchor(img) {
 function blurImage(img, verdict) {
   if (img.dataset.siftBlurred === "1") return;
 
-  removeCheckingBadge(img);
+  removeCheckingCover(img);
+  checking.delete(img);
   img.dataset.siftBlurred = "1";
   img.classList.add("sift-blurred");
   img.classList.remove("sift-checking");
+  // Per-image AI verdicts get the corner chip. A page-level slop verdict
+  // covers every image but isn't per-image proof, so no chip there.
+  if (verdict && verdict.ai !== undefined) addVerdictBadge(img, "fake");
   img.setAttribute("title", "Sift: this picture may be AI-generated. Click to reveal it.");
 
   // Capture phase + preventDefault means the first click can never
@@ -380,6 +447,8 @@ function teardownImage(img) {
   if (img.dataset.siftRevealed) delete img.dataset.siftRevealed;
   img.removeAttribute("title");
   removeCover(img);
+  removeCheckingCover(img);
+  removeVerdictBadge(img);
 }
 
 /* ------------------------------------------------------------------ */
@@ -430,7 +499,8 @@ function isScorableImage(img) {
   const rect = img.getBoundingClientRect();
   const width = Math.max(img.naturalWidth, rect.width || 0);
   const height = Math.max(img.naturalHeight, rect.height || 0);
-  if (width < SCORE_MIN_WIDTH || height < SCORE_MIN_HEIGHT) return false;
+  // Only skip invisible tracking pixels. Everything else gets covered + checked.
+  if (width < SCAN_MIN_EDGE || height < SCAN_MIN_EDGE) return false;
 
   const src = img.currentSrc || img.src || "";
   if (!/^https?:/.test(src)) return false;
@@ -451,7 +521,7 @@ function observe(img) {
 async function enqueue(img, inView = true) {
   if (!running || flagged) return;
   if (!(img instanceof HTMLImageElement)) return;
-  if (scored.has(img) || inFlight.has(img)) return;
+  if (scored.has(img) || inFlight.has(img) || checking.has(img)) return;
   if (img.dataset.siftBlurred === "1" || img.dataset.siftRevealed === "1") return;
 
   if (img.naturalWidth === 0) {
@@ -470,31 +540,42 @@ async function enqueue(img, inView = true) {
 
   if (!isScorableImage(img)) return;
 
-  // Bloom on-device scoring — NO CAP, every image gets checked.
-  // The "sift is checking" badge shows on every image while Bloom works.
+  // Cover the image IMMEDIATELY and run the checking UI. Bloom (local,
+  // free, no cap) scores it; the cover resolves when the verdict lands.
+  checking.add(img);
   img.classList.add("sift-checking");
-  addCheckingBadge(img);
+  addCheckingCover(img);
+
   const bloom = window.SiftBloom
     ? await window.SiftBloom.scoreImage(img)
     : { ok: false, error: "bloom-missing" };
-  removeCheckingBadge(img);
-  img.classList.remove("sift-checking");
 
   if (bloom.ok) {
     scored.add(img);
+    checking.delete(img);
+    img.classList.remove("sift-checking");
+    removeCheckingCover(img);
     if (bloom.blur) blurImage(img, bloom);
+    else revealReal(img);
     return;
   }
 
   // Bloom unavailable (cross-origin / no CORS) → remote Gemini API fallback.
-  // Budget applies here because remote calls cost money.
-  if (inView) {
-    if (inviewBudget <= 0) return;
-    inviewBudget -= 1;
-  } else {
-    if (prefetchBudget <= 0) return;
-    prefetchBudget -= 1;
+  // The checking cover stays until the remote verdict lands. Budget applies
+  // here because remote calls cost money.
+  const budgetGone = inView
+    ? inviewBudget <= 0
+    : prefetchBudget <= 0;
+  if (budgetGone) {
+    // Fail open: lift the cover, no badge, image goes back to normal.
+    scored.add(img);
+    checking.delete(img);
+    img.classList.remove("sift-checking");
+    removeCheckingCover(img);
+    return;
   }
+  if (inView) inviewBudget -= 1;
+  else prefetchBudget -= 1;
 
   inFlight.add(img);
   pending.push({
@@ -542,22 +623,34 @@ async function flushBatch() {
     for (const item of chunk) {
       inFlight.delete(item.img);
 
-      if (flagged) continue; // blurAll already handled every image
+      if (flagged) {
+        checking.delete(item.img);
+        continue; // blurAll already handled every image
+      }
 
       const verdict = bySrc.get(item.src);
 
       if (!verdict || verdict.ok === false) {
         // Transient failure (service-worker cold start, timeout, 5xx):
-        // retry a couple of times before giving up quietly.
+        // retry a couple of times with the cover still on, then give up
+        // and lift it (fail open).
         const tries = (attempts.get(item.img) || 0) + 1;
         attempts.set(item.img, tries);
-        if (tries < MAX_RETRIES) retries.push(item);
-        else scored.add(item.img);
+        if (tries < MAX_RETRIES) {
+          retries.push(item);
+          continue;
+        }
+        scored.add(item.img);
+        checking.delete(item.img);
+        item.img.classList.remove("sift-checking");
+        removeCheckingCover(item.img);
         continue;
       }
 
       scored.add(item.img);
+      checking.delete(item.img);
       if (verdict.blur) blurImage(item.img, verdict);
+      else revealReal(item.img);
     }
   } finally {
     flushing = false;
@@ -773,7 +866,8 @@ function stopShield() {
   }
   io.disconnect();
   for (const img of [...covers.keys()]) removeCover(img);
-  for (const img of [...checkingBadges.keys()]) removeCheckingBadge(img);
+  for (const img of [...checkingCovers.keys()]) removeCheckingCover(img);
+  for (const img of [...verdictBadges.keys()]) removeVerdictBadge(img);
   for (const img of document.querySelectorAll("img.sift-blurred")) teardownImage(img);
   for (const img of document.querySelectorAll("img.sift-checking"))
     img.classList.remove("sift-checking");
