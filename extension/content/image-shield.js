@@ -313,6 +313,12 @@ function addVerdictBadge(img, kind) {
   const badge = document.createElement("span");
   badge.className = `sift-verdict sift-verdict-${kind}`;
 
+  // Scale the chip to the picture it sits on — a full-size pill would
+  // swallow a 40px avatar.
+  const rect = img.getBoundingClientRect();
+  if (rect.width < 90 || rect.height < 70) badge.classList.add("sift-verdict-tiny");
+  else if (rect.width < 170 || rect.height < 140) badge.classList.add("sift-verdict-small");
+
   const mark = flower();
   const label = document.createElement("span");
   label.textContent = kind === "real" ? "sift · real" : "sift · fake";

@@ -6,11 +6,18 @@
  * statically import) that exposes window.SiftBloom. image-shield.js calls
  * window.SiftBloom.scoreImage(img) for every image, with no cap.
  *
+ * Images are read two ways, in order:
+ *   1. createImageBitmap(img) directly — free, but cross-origin images
+ *      without CORS headers throw SecurityError in the page context.
+ *   2. The extension's service worker (host_permissions <all_urls>) fetches
+ *      the bytes with extension privileges — this works for every http(s)
+ *      image on the page, including CDN thumbnails.
+ *
  * scoreImage(img) -> Promise<{ok:true, ai, confidence, blur} | {ok:false, error}>
  *
- * Failures are sticky: once Bloom is known broken (CSP, cross-origin image,
- * model fetch failed), every later call short-circuits to {ok:false} so the
- * shield falls back to the remote Gemini API without hammering the worker.
+ * Failures are sticky: once Bloom is known broken (model download failed,
+ * ORN died), every later call short-circuits to {ok:false} so the shield
+ * falls back to the remote Gemini API without hammering the worker.
  */
 
 (() => {
@@ -25,6 +32,19 @@
   let running = 0;
   const waitQueue = [];
   const pending = new Map(); // id -> resolve
+
+  function send(msg) {
+    return new Promise((resolve) => {
+      try {
+        chrome.runtime.sendMessage(msg, (reply) => {
+          if (chrome.runtime.lastError) return resolve(null);
+          resolve(reply);
+        });
+      } catch {
+        resolve(null);
+      }
+    });
+  }
 
   function createWorker() {
     const url = chrome.runtime.getURL("content/bloom-worker.js");
@@ -76,6 +96,36 @@
     if (next) next();
   }
 
+  function base64ToBlob(b64, mime) {
+    const bin = atob(b64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i += 1) bytes[i] = bin.charCodeAt(i);
+    return new Blob([bytes], { type: mime || "image/jpeg" });
+  }
+
+  /* Every image on the page must be readable. Direct bitmap first; the
+   * service worker's privileged fetch is the fallback for cross-origin. */
+  async function bitmapFor(img) {
+    try {
+      return await createImageBitmap(img);
+    } catch {
+      /* cross-origin without CORS — the service worker can still read it */
+    }
+
+    const src = img.currentSrc || img.src || "";
+    if (!/^https?:/.test(src)) return null;
+
+    const reply = await send({ type: "fetchImage", src });
+    if (reply && reply.ok && reply.data) {
+      try {
+        return await createImageBitmap(base64ToBlob(reply.data, reply.mime));
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  }
+
   async function scoreImage(img) {
     if (workerFailed) return { ok: false, error: "worker-disabled" };
 
@@ -93,7 +143,8 @@
 
       await acquireSlot();
       try {
-        const bitmap = await createImageBitmap(img);
+        const bitmap = await bitmapFor(img);
+        if (!bitmap) return { ok: false, error: "undecodable" };
         const id = nextId += 1;
         return await new Promise((resolve) => {
           pending.set(id, resolve);
@@ -103,8 +154,6 @@
         releaseSlot();
       }
     } catch (err) {
-      // Cross-origin images without CORS taint createImageBitmap; that is
-      // a normal case, not a broken Bloom — let the caller fall back.
       return { ok: false, error: String((err && err.message) || err) };
     }
   }

@@ -296,6 +296,44 @@ function withTimeout(promise, ms) {
   });
 }
 
+/*
+ * fetchImage — extension-privileged fetch for the local Bloom model.
+ * Content scripts run in the page context, so cross-origin images without
+ * CORS headers can never be read by createImageBitmap() there. The service
+ * worker has host_permissions for <all_urls> and bypasses that entirely,
+ * so Bloom can check EVERY image — even CDN thumbnails.
+ * Returns { ok, mime, data } where data is base64 JPEG downscaled to 512px
+ * (plenty for Bloom's 192px input) or { ok: false, error }.
+ */
+async function fetchImage(msg) {
+  const src = String((msg && msg.src) || "");
+  if (!/^https?:/.test(src)) return { ok: false, error: "bad-url" };
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15000);
+
+  try {
+    const res = await fetch(src, {
+      credentials: "omit",
+      cache: "force-cache",
+      referrerPolicy: "no-referrer",
+      signal: controller.signal
+    });
+    if (!res.ok) throw new Error(`image ${res.status}`);
+
+    const blob = await res.blob();
+    if (!/^image\//.test(blob.type)) throw new Error("not-an-image");
+    if (blob.size > MAX_IMAGE_BYTES) throw new Error("image-too-large");
+
+    const prepared = await prepareImage(blob);
+    return { ok: true, ...prepared };
+  } catch (e) {
+    return { ok: false, error: String((e && e.message) || e) };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function fetchAndPrepare(src, signal) {
   const imgRes = await fetch(src, {
     credentials: "omit",
@@ -495,6 +533,9 @@ async function handle(msg) {
 
     case "scorePage":
       return scorePage(msg);
+
+    case "fetchImage":
+      return fetchImage(msg);
 
     case "scoreImages":
       return scoreImages(msg);

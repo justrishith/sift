@@ -235,6 +235,31 @@ img.sift-checking {
   box-shadow: 0 4px 12px rgba(27, 16, 51, 0.35);
 }
 
+.sift-verdict-small {
+  font-size: 8px;
+  padding: 3px 8px 3px 4px;
+  gap: 4px;
+}
+
+.sift-verdict-small img {
+  width: 11px;
+  height: 11px;
+}
+
+.sift-verdict-tiny {
+  padding: 4px;
+  border-radius: 10px;
+}
+
+.sift-verdict-tiny span {
+  display: none;
+}
+
+.sift-verdict-tiny img {
+  width: 14px;
+  height: 14px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   img.sift-checking {
     outline: none;
