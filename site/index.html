@@ -1,381 +1,1237 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
+﻿<!DOCTYPE html><html class="dark" lang="en" style="scroll-behavior: smooth;"><head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sift — Fake pics? Not on my watch.</title>
-<meta name="description" content="Sift is a Chrome extension that blurs AI-generated images in news articles and lets the reader reveal them one at a time.">
-<meta name="theme-color" content="#f4efff">
-<link rel="icon" href="flower.svg" type="image/svg+xml">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css">
-</head>
-<body>
-
-<header class="topbar">
-  <div class="wrap topbar-inner">
-    <a class="wordmark" href="index.html" aria-label="Sift home">
-      <img class="brand-mark" src="flower.svg" alt="" width="26" height="26">
-      <span>sift<i class="wordmark-dot">.</i></span>
-    </a>
-    <nav class="topnav" aria-label="Primary">
-      <a href="#how">How it works</a>
-      <a href="#numbers">By the numbers</a>
-      <a href="#try">Test pages</a>
-      <a href="https://github.com/justrishith/sift">GitHub</a>
-    </nav>
-  </div>
-</header>
-
-<main>
-
-<section class="hero">
-  <div class="hero-grid-lines" aria-hidden="true"></div>
-  <div class="wrap hero-grid">
-    <div class="hero-copy">
-      <span class="eyebrow"><img src="flower.svg" alt="" width="18" height="18"> hi, i'm sift</span>
-      <h1><span class="grad">Fake pics?</span><br>Not on my watch.</h1>
-      <p class="lede">
-        Sift is a Chrome extension with one job: read the article, sniff out the AI slop,
-        and tuck its pictures behind a friendly blur. Tap one to peek. Nothing gets deleted.
-      </p>
-      <div class="hero-actions">
-        <a class="btn btn-primary" href="slop.html#sift-demo">See it block a slop page</a>
-        <a class="btn btn-ghost" href="article.html">Read a clean article</a>
-      </div>
-      <p class="hero-note">Gemini reads the text, never your images · the key stays on the server</p>
-    </div>
-
-    <div class="hero-art" aria-hidden="true">
-      <div class="orb-glow"></div>
-      <div class="orb orb-main">
-        <img class="orb-flower" src="flower.svg" alt="">
-      </div>
-      <div class="orb orb-chip"></div>
-      <div class="orb-badge"><img src="flower.svg" alt=""> blocked by sift</div>
-      <span class="spark spark-a">✦</span>
-      <span class="spark spark-b">✦</span>
-      <span class="spark spark-c">✿</span>
-    </div>
-  </div>
-</section>
-
-<div class="marquee" aria-hidden="true">
-  <div class="marquee-track">
-    <span>real photos stay real</span><i>✿</i>
-    <span>fakes get blurred</span><i>✿</i>
-    <span>tap to peek</span><i>✿</i>
-    <span>nothing gets deleted</span><i>✿</i>
-    <span>real photos stay real</span><i>✿</i>
-    <span>fakes get blurred</span><i>✿</i>
-    <span>tap to peek</span><i>✿</i>
-    <span>nothing gets deleted</span><i>✿</i>
-  </div>
-</div>
-
-<section class="section" id="how">
-  <div class="wrap">
-    <div class="section-head-row">
-      <div>
-        <span class="kicker">how it works</span>
-        <h2 class="section-title">One verdict per article.<br>Zero extra work for you.</h2>
-      </div>
-      <p class="section-sub">
-        Classifying every image is slow and expensive. Sift classifies the page once,
-        then acts on every picture inside it.
-      </p>
-    </div>
-
-    <div class="steps">
-      <div class="step">
-        <span class="step-num">01</span>
-        <h3>Read</h3>
-        <p>The extension extracts the article text and sends it to a scoring endpoint. No URL, no cookies, no identifiers.</p>
-      </div>
-      <div class="step">
-        <span class="step-num">02</span>
-        <h3>Judge</h3>
-        <p>Gemini returns one of three verdicts: editorial, content farm, or synthetic. The key stays server-side.</p>
-      </div>
-      <div class="step">
-        <span class="step-num">03</span>
-        <h3>Blur</h3>
-        <p>If the page is flagged, every content image gets a soft lilac blur. The reader reveals what they choose.</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section class="section reality" id="numbers">
-  <div class="wrap">
-    <div class="section-head-row">
-      <div>
-        <span class="kicker">the situation</span>
-        <h2 class="section-title">The internet is<br>getting fuzzy.</h2>
-      </div>
-      <p class="section-sub">
-        Cheap image models and cheap publishing mean the feed fills up faster than
-        anyone can check it. These reported figures are why Sift exists.
-      </p>
-    </div>
-
-    <div class="reality-grid" data-reality>
-      <article class="data-card data-wide">
-        <div class="data-head">
-          <span class="data-label">AI-generated news sites tracked by NewsGuard</span>
-          <span class="data-badge">reported</span>
-        </div>
-        <div class="bar-chart">
-          <div class="bar-row">
-            <span class="bar-year">2023</span>
-            <div class="bar-track"><i class="bar-fill" style="--w: 6%"></i></div>
-            <b class="bar-val">49</b>
-          </div>
-          <div class="bar-row">
-            <span class="bar-year">2024</span>
-            <div class="bar-track"><i class="bar-fill" style="--w: 58%"></i></div>
-            <b class="bar-val">600+</b>
-          </div>
-          <div class="bar-row">
-            <span class="bar-year">2025</span>
-            <div class="bar-track"><i class="bar-fill" style="--w: 97%"></i></div>
-            <b class="bar-val">1,000+</b>
-          </div>
-        </div>
-        <p class="data-note">Roughly a 20× rise in under two years.</p>
-        <span class="data-source">Source: NewsGuard, 2025</span>
-      </article>
-
-      <article class="data-card data-ring-card">
-        <div class="ring" data-ring="90">
-          <svg viewBox="0 0 120 120" aria-hidden="true">
-            <defs>
-              <linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0" stop-color="#6d28d9"/>
-                <stop offset="0.6" stop-color="#a78bfa"/>
-                <stop offset="1" stop-color="#f2a7d8"/>
-              </linearGradient>
-            </defs>
-            <circle class="ring-bg" cx="60" cy="60" r="52"/>
-            <circle class="ring-fill" cx="60" cy="60" r="52"/>
-          </svg>
-          <strong class="ring-num"><span data-count="90">0</span><span class="unit">%</span></strong>
-        </div>
-        <span class="data-label">of online content could be synthetic by 2026</span>
-        <span class="data-source">Source: Europol, 2023</span>
-      </article>
-
-      <article class="data-card data-stat">
-        <strong class="stat-num"><span data-count="56">0</span><span class="unit">%</span></strong>
-        <span class="data-label">of people worry about telling true content from false online</span>
-        <span class="data-source">Source: Reuters Institute, 2024</span>
-      </article>
-
-      <article class="data-card data-stat data-stat-pink">
-        <strong class="stat-num"><span data-count="3000">0</span><span class="unit">%</span></strong>
-        <span class="data-label">reported rise in deepfake fraud attempts in a single year</span>
-        <span class="data-source">Source: Sumsub, 2025</span>
-      </article>
-    </div>
-
-    <p class="reality-note">Reported figures, not measurements made by Sift. Source links live in the repo.</p>
-  </div>
-</section>
-
-<section class="section section-alt" id="try">
-  <div class="wrap">
-    <div class="section-head-row">
-      <div>
-        <span class="kicker">the test</span>
-        <h2 class="section-title">Two pages. One extension.</h2>
-      </div>
-      <p class="section-sub">
-        Sift runs on both. It should blur one and leave the other completely alone.
-        Same code, no hardcoded selectors.
-      </p>
-    </div>
-
-    <div class="test-grid">
-      <a class="test-card" href="slop.html#sift-demo">
-        <div class="card-media">
-          <img src="img/slop-hero.jpg" alt="A pile of one-dollar bills" loading="lazy">
-          <span class="media-chip chip-blur"><i class="tag-dot"></i> should blur</span>
-        </div>
-        <div class="card-body">
-          <h3>“Secret AI Money Glitch Banks Don’t Want You To Know About”</h3>
-          <p>A fabricated, machine-written page. Sift flags it and blurs all four photos.</p>
-          <span class="card-arrow" aria-hidden="true">→</span>
-        </div>
-      </a>
-
-      <a class="test-card" href="article.html">
-        <div class="card-media">
-          <img src="img/article-hero.jpg" alt="Glass office towers seen from below" loading="lazy">
-          <span class="media-chip chip-clear"><i class="tag-dot"></i> stays sharp</span>
-        </div>
-        <div class="card-body">
-          <h3>“Tech Billionaire’s AI Trading Fund Vanishes After $400 Million Raised”</h3>
-          <p>Reported prose with named sources. Sift leaves every photo untouched.</p>
-          <span class="card-arrow" aria-hidden="true">→</span>
-        </div>
-      </a>
-    </div>
-  </div>
-</section>
-
-<section class="section">
-  <div class="wrap">
-    <div class="section-head-row">
-      <div>
-        <span class="kicker">the feeling</span>
-        <h2 class="section-title">A softer kind of shield.</h2>
-      </div>
-      <p class="section-sub">
-        No scary warnings, no missing layout, no lectures. Just a flower that hides the
-        questionable stuff until you ask.
-      </p>
-    </div>
-
-    <div class="showcase" data-showcase>
-      <figure class="shot">
-        <div class="shot-frame">
-          <img src="img/slop-mansion.jpg" alt="A modern house at dusk" loading="lazy">
-          <button class="shot-cover" type="button" data-peek aria-label="Reveal the picture blocked by Sift">
-            <span class="shot-badge"><img src="flower.svg" alt=""> blocked by sift</span>
-            <img class="shot-flower" src="flower.svg" alt="">
-            <span class="shot-hint">tap to peek</span>
-          </button>
-        </div>
-        <figcaption><b>Flagged.</b> Every picture gets tucked behind the same friendly blur.</figcaption>
-      </figure>
-
-      <figure class="shot">
-        <div class="shot-frame">
-          <img src="img/article-trading.jpg" alt="A market chart trending downward" loading="lazy">
-        </div>
-        <figcaption><b>Editorial.</b> Real reporting stays exactly as the photographer shot it.</figcaption>
-      </figure>
-
-      <button class="pill-mock" type="button" data-reveal>
-        <img src="flower.svg" alt="" width="24" height="24">
-        <span class="pill-mock-label">1 picture hidden</span>
-        <span class="pill-mock-btn">Show them</span>
-      </button>
-    </div>
-  </div>
-</section>
-
-<section class="section">
-  <div class="wrap">
-    <div class="claim">
-      <div class="claim-copy">
-        <span class="kicker">the fine print</span>
-        <h2>What Sift does not claim</h2>
-        <p>
-          Gemini classifies text, not pixels. Sift catches AI-generated articles and slop pages.
-          A deepfake planted on a trustworthy publisher is a separate problem, and the interface
-          never pretends otherwise.
-        </p>
-      </div>
-      <img class="claim-flower" src="flower.svg" alt="" aria-hidden="true">
-    </div>
-  </div>
-</section>
-
-</main>
-
-<footer class="site-foot">
-  <div class="wrap foot-grid">
-    <a class="wordmark foot-wordmark" href="index.html">
-      <img class="brand-mark" src="flower.svg" alt="" width="24" height="24">
-      <span>sift<i class="wordmark-dot">.</i></span>
-    </a>
-    <p>Sift demo content. Not a real publication.</p>
-    <nav class="foot-nav" aria-label="Footer">
-      <a href="https://github.com/justrishith/sift">Source on GitHub</a>
-      <a href="slop.html#sift-demo">Slop page</a>
-      <a href="article.html">Clean page</a>
-    </nav>
-  </div>
-</footer>
-
-<script>
-  const showcase = document.querySelector("[data-showcase]");
-  const reveal = document.querySelector("[data-reveal]");
-  const peek = document.querySelector("[data-peek]");
-  if (showcase && reveal) {
-    const setRevealed = (open) => {
-      showcase.classList.toggle("is-revealed", open);
-      reveal.querySelector(".pill-mock-label").textContent = open
-        ? "1 picture revealed"
-        : "1 picture hidden";
-      reveal.querySelector(".pill-mock-btn").textContent = open ? "Hide it" : "Show them";
-      reveal.setAttribute("aria-pressed", String(open));
-    };
-    reveal.addEventListener("click", () => {
-      setRevealed(!showcase.classList.contains("is-revealed"));
-    });
-    if (peek) peek.addEventListener("click", () => setRevealed(true));
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport">
+<meta content="web_standard" name="shell-type">
+<title>sift â€” Senior &amp; Family AI Protection</title>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+  @layer base {
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      height: 100dvh;
+      overflow: hidden;
+      overscroll-behavior-y: none;
+      background-color: #0b0614;
+    }
   }
 
-  const reality = document.querySelector("[data-reality]");
-  if (reality) {
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const ease = (t) => 1 - Math.pow(1 - t, 3);
+  /* Full Page Mandatory Snapping Scroll Container */
+  .snap-container {
+    scroll-snap-type: y mandatory;
+    overflow-y: scroll;
+    height: 100vh;
+    height: 100dvh;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: none;
+  }
+  
+  .snap-section {
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+    min-height: 100vh;
+    min-height: 100dvh;
+    max-height: 100vh;
+    max-height: 100dvh;
+    height: 100vh;
+    height: 100dvh;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
 
-    const runCounters = () => {
-      reality.querySelectorAll("[data-count]").forEach((el) => {
-        const target = Number(el.dataset.count) || 0;
-        if (reduce) {
-          el.textContent = target.toLocaleString("en-US");
-          return;
+  ::-webkit-scrollbar { display: none; }
+  .snap-container { -ms-overflow-style: none; scrollbar-width: none; }
+
+  .smooth-carousel-track {
+    transition: transform 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /* Pop out keyword glow badge in dark mode */
+  .pop-word {
+    display: inline-block;
+    padding: 0.2rem 0.75rem;
+    border-radius: 0.5rem;
+    background: rgba(168, 85, 247, 0.2);
+    color: #e9ddff;
+    font-weight: 700;
+    border: 1px solid rgba(192, 132, 252, 0.35);
+    box-shadow: 0 0 16px rgba(168, 85, 247, 0.28);
+  }
+
+  /* Luminous title text glow matching IMAGE_6 exactly */
+  .luminous-minimal-sift {
+    text-shadow: 0 0 35px rgba(222, 183, 255, 0.65), 0 0 75px rgba(168, 85, 247, 0.45);
+  }
+
+  /* Laser scanning line animation */
+  @keyframes scanline {
+    0% { top: -10%; opacity: 0; }
+    15% { opacity: 1; }
+    85% { opacity: 1; }
+    100% { top: 110%; opacity: 0; }
+  }
+  .animate-scanline {
+    animation: scanline 1.3s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  }
+
+  /* Shimmer pulse for badge reveal */
+  @keyframes badgePop {
+    0% { transform: scale(0.7) translateY(-6px); opacity: 0; }
+    70% { transform: scale(1.05) translateY(0); opacity: 1; }
+    100% { transform: scale(1) translateY(0); opacity: 1; }
+  }
+  .animate-badge-pop {
+    animation: badgePop 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  }
+</style>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        colors: {
+          "primary": "#d0bcff",
+          "primary-container": "#3b125e",
+          "on-primary": "#24005a",
+          "secondary": "#a855f7",
+          "secondary-container": "rgba(168, 85, 247, 0.15)",
+          "on-secondary": "#ffffff",
+          "on-secondary-container": "#e9ddff",
+          "secondary-fixed": "#e9ddff",
+          "surface": "#0b0614",
+          "surface-container": "#120a20",
+          "surface-container-high": "#190f2b",
+          "surface-container-highest": "#201438",
+          "on-surface": "#f5f0ff",
+          "on-surface-variant": "#c4b5fd",
+          "outline": "#4e3b66",
+          "outline-variant": "rgba(167, 139, 250, 0.2)",
+          "accent-purple": "#c084fc",
+          "soft-purple": "rgba(168, 85, 247, 0.1)",
+          "badge-purple": "rgba(168, 85, 247, 0.18)"
+        },
+        fontFamily: {
+          sans: ["Space Grotesk", "sans-serif"]
         }
-        const start = performance.now();
-        const duration = 1100;
-        const finish = () => {
-          el.textContent = target.toLocaleString("en-US");
-        };
-        const step = (now) => {
-          const t = Math.min(1, (now - start) / duration);
-          el.textContent = Math.round(target * ease(t)).toLocaleString("en-US");
-          if (t < 1) requestAnimationFrame(step);
-        };
-        requestAnimationFrame(step);
-        window.setTimeout(finish, duration + 250);
-      });
-    };
-
-    const runRing = () => {
-      const ring = reality.querySelector("[data-ring]");
-      const circle = reality.querySelector(".ring-fill");
-      if (!ring || !circle) return;
-      const pct = Number(ring.dataset.ring) / 100;
-      const radius = Number(circle.getAttribute("r"));
-      const circumference = 2 * Math.PI * radius;
-      circle.style.strokeDasharray = String(circumference);
-      circle.style.strokeDashoffset = String(circumference);
-      if (reduce) {
-        circle.style.strokeDashoffset = String(circumference * (1 - pct));
-        return;
       }
-      requestAnimationFrame(() => {
-        circle.style.strokeDashoffset = String(circumference * (1 - pct));
-      });
-    };
+    }
+  };
+</script>
+</head>
+<body class="bg-[#0b0614] font-sans text-on-surface h-full w-full antialiased selection:bg-purple-900/60 selection:text-purple-200">
+<!-- Fixed Header (Translucent Dark Obsidian Glass) -->
+<header class="fixed top-0 left-0 right-0 z-50 w-full bg-[#120a20]/85 backdrop-blur-xl border-b border-purple-500/15 transition-all shadow-[0_4px_24px_rgba(0,0,0,0.5)]">
+<div class="max-w-[1520px] mx-auto px-5 sm:px-10 h-16 sm:h-18 flex items-center justify-between gap-4">
+<!-- Brand Logo -->
+<div class="flex items-center gap-2 sm:gap-3 shrink-0">
+<a class="flex items-center gap-2.5 group cursor-pointer" onclick="scrollToSnap(0)">
+<span class="text-2xl sm:text-3xl font-bold tracking-tight text-white drop-shadow-[0_0_12px_rgba(192,132,252,0.4)]">sift</span>
+</a>
+</div>
+<!-- Navigation Links -->
+<nav class="hidden lg:flex items-center gap-2 bg-[#190f2b]/90 p-1.5 rounded-full border border-purple-500/20 shadow-inner"><button class="nav-item-btn px-5 py-2 rounded-full text-xs sm:text-sm font-medium text-[#c4b5fd]/80 hover:text-white transition-all" onclick="scrollToSnap(0)">Title</button><button class="nav-item-btn px-5 py-2 rounded-full text-xs sm:text-sm font-semibold bg-purple-500/25 text-white border border-purple-400/30 shadow-xs transition-all" onclick="scrollToSnap(1)">Live Demo</button><button class="nav-item-btn px-5 py-2 rounded-full text-xs sm:text-sm font-medium text-[#c4b5fd]/80 hover:text-white transition-all" onclick="scrollToSnap(2)">Protection</button><button class="nav-item-btn px-5 py-2 rounded-full text-xs sm:text-sm font-medium text-[#c4b5fd]/80 hover:text-white transition-all" onclick="scrollToSnap(3)">How It Works</button><button class="nav-item-btn px-5 py-2 rounded-full text-xs sm:text-sm font-medium text-[#c4b5fd]/80 hover:text-white transition-all" onclick="scrollToSnap(4)">FAQ</button><button class="nav-item-btn px-5 py-2 rounded-full text-xs sm:text-sm font-medium text-[#c4b5fd]/80 hover:text-white transition-all" onclick="scrollToSnap(5)">Stories</button></nav>
+<!-- Right CTA -->
+<div class="flex items-center gap-2 sm:gap-3 shrink-0">
+<a class="inline-flex items-center justify-center h-10 sm:h-12 px-5 sm:px-6 rounded-full bg-gradient-to-r from-purple-600 via-[#7c3aed] to-purple-600 text-white text-xs sm:text-sm font-semibold hover:shadow-[0_0_24px_rgba(168,85,247,0.5)] hover:scale-[1.02] active:scale-[0.98] transition-all border border-purple-400/40 group" href="sift-extension.zip" download>
+<span class="material-symbols-outlined mr-2 text-[18px] sm:text-[20px] text-purple-200 transition-transform group-hover:-translate-y-0.5">download</span>
+<span class="whitespace-nowrap font-medium">Add to Chrome â€” Free</span>
+</a>
+</div>
+</div>
+</header>
+<!-- Sleek Floating Vertical Dot Navigation -->
+<aside aria-label="Section Quick Jump" class="fixed right-3 sm:right-6 top-1/2 -translate-y-1/2 z-40 hidden md:flex flex-col items-center gap-3.5 bg-[#190f2b]/85 backdrop-blur-md p-2.5 rounded-full border border-purple-500/25 shadow-[0_8px_32px_rgba(0,0,0,0.6)]"><button aria-label="Section 1: Title" class="snap-dot w-3 h-3 rounded-full transition-all duration-300 bg-purple-900/80 hover:bg-purple-400 border border-purple-500/30" data-snap-idx="0" onclick="scrollToSnap(0)"></button><button aria-label="Section 2: Live Demo" class="snap-dot w-3.5 h-3.5 rounded-full transition-all duration-300 bg-purple-400 ring-4 ring-purple-500/30 scale-125 shadow-[0_0_10px_#a855f7]" data-snap-idx="1" onclick="scrollToSnap(1)"></button><button aria-label="Section 3: What It Blocks" class="snap-dot w-3 h-3 rounded-full transition-all duration-300 bg-purple-900/80 hover:bg-purple-400 border border-purple-500/30" data-snap-idx="2" onclick="scrollToSnap(2)"></button><button aria-label="Section 4: How It Works" class="snap-dot w-3 h-3 rounded-full transition-all duration-300 bg-purple-900/80 hover:bg-purple-400 border border-purple-500/30" data-snap-idx="3" onclick="scrollToSnap(3)"></button><button aria-label="Section 5: FAQ" class="snap-dot w-3 h-3 rounded-full transition-all duration-300 bg-purple-900/80 hover:bg-purple-400 border border-purple-500/30" data-snap-idx="4" onclick="scrollToSnap(4)"></button><button aria-label="Section 6: Stories" class="snap-dot w-3 h-3 rounded-full transition-all duration-300 bg-purple-900/80 hover:bg-purple-400 border border-purple-500/30" data-snap-idx="5" onclick="scrollToSnap(5)"></button></aside>
+<!-- Full-Page Section Snapping Container -->
+<main class="snap-container w-full h-full" id="main-scroller">
+<!-- ==================== SECTION 0: TITLE PAGE (EXACT IMAGE_6 CONTENT) ==================== -->
+<section class="snap-section w-full relative overflow-hidden flex items-center justify-center bg-[#17042c]" id="title-page">
+<canvas class="absolute inset-0 w-full h-full pointer-events-none opacity-90" height="6144" id="nebula-canvas" width="1280"></canvas>
+<!-- Radial atmospheric vignette -->
+<div class="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_center,_rgba(139,92,246,0.22)_0%,_transparent_65%)]"></div>
+<div class="relative z-10 flex flex-col items-center justify-center text-center px-4 select-none">
+<!-- sift wordmark (exact visual match to IMAGE_6) -->
+<h1 class="text-7xl sm:text-8xl md:text-9xl font-bold text-[#deb7ff] tracking-tight leading-none luminous-minimal-sift lowercase">
+    sift
+  </h1>
+<!-- deepfake blocker subtitle -->
+<p class="mt-3 sm:mt-4 text-base sm:text-xl text-[#deb7ff]/80 font-normal tracking-wide lowercase">
+    deepfake blocker
+  </p>
+<!-- explore â†“ pill button -->
+<div class="mt-8 sm:mt-10">
+<button class="group inline-flex items-center justify-center gap-1.5 px-6 sm:px-7 py-2.5 rounded-full bg-[#3e1463]/75 hover:bg-[#521b82]/85 text-[#f3e8ff] border border-purple-400/40 text-xs sm:text-sm font-medium transition-all hover:scale-105 active:scale-95 shadow-[0_4px_20px_rgba(74,21,112,0.4)]" onclick="scrollToSnap(1)">
+<span class="lowercase">explore</span>
+<span class="text-xs sm:text-sm leading-none transition-transform group-hover:translate-y-0.5">â†“</span>
+</button>
+</div>
+</div>
+</section>
+<!-- ==================== SECTION 1: LIVE DEMO DETECTOR ==================== -->
+<section class="snap-section w-full pt-16 sm:pt-20 pb-6 bg-[#0b0614] overflow-hidden flex flex-col justify-center items-center" id="sec-demo">
+<div class="max-w-[1240px] mx-auto px-4 sm:px-8 w-full flex-1 flex flex-col justify-center min-h-0 text-center">
+<div class="mb-3 sm:mb-4 shrink-0">
 
-    const io = new IntersectionObserver((entries) => {
-      if (!entries.some((entry) => entry.isIntersecting)) return;
-      io.disconnect();
-      reality.classList.add("is-live");
-      runCounters();
-      runRing();
-    }, { threshold: 0.3 });
+<h2 class="text-2xl sm:text-4xl lg:text-5xl font-bold text-white tracking-tight leading-tight">Six pictures. Judge them right here.</h2>
+<p class="text-xs sm:text-sm lg:text-base text-[#c4b5fd]/80 mt-1 max-w-2xl mx-auto leading-normal">Three are real photographs and three were generated. Which ones are deep fakes?</p>
+</div>
+<!-- 6 Interactive Demo Cards Grid -->
+<div class="grid grid-cols-3 gap-2.5 sm:gap-4 max-w-4xl mx-auto w-full flex-1 max-h-[460px] my-1 sm:my-2" id="demo-grid">
+<!-- Card 1: Synthetic Portrait -->
+<div class="demo-card group relative rounded-xl sm:rounded-2xl overflow-hidden border border-purple-500/25 bg-[#190f2b] flex flex-col justify-end aspect-[4/3] sm:aspect-auto shadow-md transition-all duration-300 cursor-pointer select-none" data-confidence="98.7%" data-detail="Procedural geometry glitch textures and neon river synthesis artifacts" data-name="Synthetic Landscape" data-synthetic="true" onclick="toggleCardDetail(this)">
+<img alt="AI generated synthetic deepfake landscape" class="card-img absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" src="img/stitch-6.jpg">
+<!-- Active scanning laser / radar layer -->
+<div class="scan-overlay absolute inset-0 bg-purple-900/40 backdrop-blur-[1px] opacity-0 transition-opacity duration-300 pointer-events-none flex flex-col items-center justify-center overflow-hidden">
+<div class="laser-line absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-[#c084fc] to-transparent shadow-[0_0_12px_#c084fc] pointer-events-none hidden"></div>
+<div class="radar-box flex flex-col items-center gap-1">
+<span class="material-symbols-outlined text-purple-200 text-3xl sm:text-4xl animate-pulse">biotech</span>
+<span class="text-[10px] sm:text-xs font-mono text-purple-200 tracking-wider">ANALYZING...</span>
+</div>
+</div>
+<!-- Result Tag Badge -->
+<div class="result-tag absolute top-2 right-2 px-2 sm:px-2.5 py-1 rounded-full text-[9px] sm:text-[11px] font-bold tracking-wide hidden transition-all shadow-lg backdrop-blur-md z-20"></div>
+<!-- Interactive Detail Overlay on Click -->
+<div class="detail-overlay absolute inset-0 bg-purple-950/90 backdrop-blur-sm p-3 flex flex-col justify-center text-left text-xs opacity-0 pointer-events-none transition-opacity duration-200 z-30">
+<div class="flex items-center justify-between pb-1 border-b border-purple-500/30">
+<span class="font-bold text-white text-[11px]">Inspection Insight</span>
+<span class="text-[10px] text-purple-300">Click to close</span>
+</div>
+<p class="text-[11px] text-purple-200 mt-2 leading-relaxed detail-text"></p>
+<div class="mt-2 text-[10px] text-[#c4b5fd]/80">Confidence: <span class="font-mono text-purple-200 conf-text"></span></div>
+</div>
+<!-- Bottom caption bar -->
+<div class="absolute inset-x-0 bottom-0 p-2 sm:p-2.5 bg-gradient-to-t from-black/85 via-black/50 to-transparent text-left z-10"><p class="text-[11px] sm:text-xs font-bold text-white leading-tight">Synthetic Landscape</p><p class="text-[9px] sm:text-[10px] text-purple-200/70">Generated concept</p></div>
+</div>
+<!-- Card 2: Cyber Hypercar -->
+<div class="demo-card group relative rounded-xl sm:rounded-2xl overflow-hidden border border-purple-500/25 bg-[#190f2b] flex flex-col justify-end aspect-[4/3] sm:aspect-auto shadow-md transition-all duration-300 cursor-pointer select-none" data-confidence="99.2%" data-detail="Diffuse lighting inconsistencies and non-Euclidean rim geometry" data-name="Cyber Hypercar" data-synthetic="true" onclick="toggleCardDetail(this)">
+<img alt="Futuristic red supercar" class="card-img absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" src="img/stitch-3.jpg">
+<div class="scan-overlay absolute inset-0 bg-purple-900/40 backdrop-blur-[1px] opacity-0 transition-opacity duration-300 pointer-events-none flex flex-col items-center justify-center overflow-hidden">
+<div class="laser-line absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-[#c084fc] to-transparent shadow-[0_0_12px_#c084fc] pointer-events-none hidden"></div>
+<div class="radar-box flex flex-col items-center gap-1">
+<span class="material-symbols-outlined text-purple-200 text-3xl sm:text-4xl animate-pulse">biotech</span>
+<span class="text-[10px] sm:text-xs font-mono text-purple-200 tracking-wider">ANALYZING...</span>
+</div>
+</div>
+<div class="result-tag absolute top-2 right-2 px-2 sm:px-2.5 py-1 rounded-full text-[9px] sm:text-[11px] font-bold tracking-wide hidden transition-all shadow-lg backdrop-blur-md z-20"></div>
+<div class="detail-overlay absolute inset-0 bg-purple-950/90 backdrop-blur-sm p-3 flex flex-col justify-center text-left text-xs opacity-0 pointer-events-none transition-opacity duration-200 z-30">
+<div class="flex items-center justify-between pb-1 border-b border-purple-500/30">
+<span class="font-bold text-white text-[11px]">Inspection Insight</span>
+<span class="text-[10px] text-purple-300">Click to close</span>
+</div>
+<p class="text-[11px] text-purple-200 mt-2 leading-relaxed detail-text"></p>
+<div class="mt-2 text-[10px] text-[#c4b5fd]/80">Confidence: <span class="font-mono text-purple-200 conf-text"></span></div>
+</div>
+<div class="absolute inset-x-0 bottom-0 p-2 sm:p-2.5 bg-gradient-to-t from-black/85 via-black/50 to-transparent text-left z-10">
+<p class="text-[11px] sm:text-xs font-bold text-white leading-tight">Cyber Hypercar</p>
+<p class="text-[9px] sm:text-[10px] text-purple-200/70">Generated concept</p>
+</div>
+</div>
+<!-- Card 3: Amethyst Valley -->
+<div class="demo-card group relative rounded-xl sm:rounded-2xl overflow-hidden border border-purple-500/25 bg-[#190f2b] flex flex-col justify-end aspect-[4/3] sm:aspect-auto shadow-md transition-all duration-300 cursor-pointer select-none" data-confidence="97.8%" data-detail="Frequency domain signature of diffusion noise in cloud boundaries" data-name="Amethyst Valley" data-synthetic="true" onclick="toggleCardDetail(this)">
+<img alt="Mountain valley river" class="card-img absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" src="img/stitch-2.jpg">
+<div class="scan-overlay absolute inset-0 bg-purple-900/40 backdrop-blur-[1px] opacity-0 transition-opacity duration-300 pointer-events-none flex flex-col items-center justify-center overflow-hidden">
+<div class="laser-line absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-[#c084fc] to-transparent shadow-[0_0_12px_#c084fc] pointer-events-none hidden"></div>
+<div class="radar-box flex flex-col items-center gap-1">
+<span class="material-symbols-outlined text-purple-200 text-3xl sm:text-4xl animate-pulse">biotech</span>
+<span class="text-[10px] sm:text-xs font-mono text-purple-200 tracking-wider">ANALYZING...</span>
+</div>
+</div>
+<div class="result-tag absolute top-2 right-2 px-2 sm:px-2.5 py-1 rounded-full text-[9px] sm:text-[11px] font-bold tracking-wide hidden transition-all shadow-lg backdrop-blur-md z-20"></div>
+<div class="detail-overlay absolute inset-0 bg-purple-950/90 backdrop-blur-sm p-3 flex flex-col justify-center text-left text-xs opacity-0 pointer-events-none transition-opacity duration-200 z-30">
+<div class="flex items-center justify-between pb-1 border-b border-purple-500/30">
+<span class="font-bold text-white text-[11px]">Inspection Insight</span>
+<span class="text-[10px] text-purple-300">Click to close</span>
+</div>
+<p class="text-[11px] text-purple-200 mt-2 leading-relaxed detail-text"></p>
+<div class="mt-2 text-[10px] text-[#c4b5fd]/80">Confidence: <span class="font-mono text-purple-200 conf-text"></span></div>
+</div>
+<div class="absolute inset-x-0 bottom-0 p-2 sm:p-2.5 bg-gradient-to-t from-black/85 via-black/50 to-transparent text-left z-10">
+<p class="text-[11px] sm:text-xs font-bold text-white leading-tight">Amethyst Valley</p>
+<p class="text-[9px] sm:text-[10px] text-purple-200/70">Generated landscape</p>
+</div>
+</div>
+<!-- Card 4: Cat in Luggage -->
+<div class="demo-card group relative rounded-xl sm:rounded-2xl overflow-hidden border border-purple-500/25 bg-[#190f2b] flex flex-col justify-end aspect-[4/3] sm:aspect-auto shadow-md transition-all duration-300 cursor-pointer select-none" data-confidence="99.9%" data-detail="Authentic CMOS sensor Bayer pattern and natural depth of field falloff" data-name="Cat in Luggage" data-synthetic="false" onclick="toggleCardDetail(this)">
+<img alt="Cat in luggage" class="card-img absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" src="img/stitch-1.jpg">
+<div class="scan-overlay absolute inset-0 bg-purple-900/40 backdrop-blur-[1px] opacity-0 transition-opacity duration-300 pointer-events-none flex flex-col items-center justify-center overflow-hidden">
+<div class="laser-line absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-[#c084fc] to-transparent shadow-[0_0_12px_#c084fc] pointer-events-none hidden"></div>
+<div class="radar-box flex flex-col items-center gap-1">
+<span class="material-symbols-outlined text-purple-200 text-3xl sm:text-4xl animate-pulse">biotech</span>
+<span class="text-[10px] sm:text-xs font-mono text-purple-200 tracking-wider">ANALYZING...</span>
+</div>
+</div>
+<div class="result-tag absolute top-2 right-2 px-2 sm:px-2.5 py-1 rounded-full text-[9px] sm:text-[11px] font-bold tracking-wide hidden transition-all shadow-lg backdrop-blur-md z-20"></div>
+<div class="detail-overlay absolute inset-0 bg-purple-950/90 backdrop-blur-sm p-3 flex flex-col justify-center text-left text-xs opacity-0 pointer-events-none transition-opacity duration-200 z-30">
+<div class="flex items-center justify-between pb-1 border-b border-purple-500/30">
+<span class="font-bold text-white text-[11px]">Inspection Insight</span>
+<span class="text-[10px] text-purple-300">Click to close</span>
+</div>
+<p class="text-[11px] text-purple-200 mt-2 leading-relaxed detail-text"></p>
+<div class="mt-2 text-[10px] text-[#c4b5fd]/80">Confidence: <span class="font-mono text-purple-200 conf-text"></span></div>
+</div>
+<div class="absolute inset-x-0 bottom-0 p-2 sm:p-2.5 bg-gradient-to-t from-black/85 via-black/50 to-transparent text-left z-10">
+<p class="text-[11px] sm:text-xs font-bold text-white leading-tight">Cat in Luggage</p>
+<p class="text-[9px] sm:text-[10px] text-purple-200/70">Camera photograph</p>
+</div>
+</div>
+<!-- Card 5: Produce Market -->
+<div class="demo-card group relative rounded-xl sm:rounded-2xl overflow-hidden border border-purple-500/25 bg-[#190f2b] flex flex-col justify-end aspect-[4/3] sm:aspect-auto shadow-md transition-all duration-300 cursor-pointer select-none" data-confidence="99.6%" data-detail="Consistent optical chromatic aberration and physically accurate specular highlights" data-name="Banane 1 â‚¬30" data-synthetic="false" onclick="toggleCardDetail(this)">
+<img alt="Banana produce market stand" class="card-img absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" src="img/stitch-4.jpg">
+<div class="scan-overlay absolute inset-0 bg-purple-900/40 backdrop-blur-[1px] opacity-0 transition-opacity duration-300 pointer-events-none flex flex-col items-center justify-center overflow-hidden">
+<div class="laser-line absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-[#c084fc] to-transparent shadow-[0_0_12px_#c084fc] pointer-events-none hidden"></div>
+<div class="radar-box flex flex-col items-center gap-1">
+<span class="material-symbols-outlined text-purple-200 text-3xl sm:text-4xl animate-pulse">biotech</span>
+<span class="text-[10px] sm:text-xs font-mono text-purple-200 tracking-wider">ANALYZING...</span>
+</div>
+</div>
+<div class="result-tag absolute top-2 right-2 px-2 sm:px-2.5 py-1 rounded-full text-[9px] sm:text-[11px] font-bold tracking-wide hidden transition-all shadow-lg backdrop-blur-md z-20"></div>
+<div class="detail-overlay absolute inset-0 bg-purple-950/90 backdrop-blur-sm p-3 flex flex-col justify-center text-left text-xs opacity-0 pointer-events-none transition-opacity duration-200 z-30">
+<div class="flex items-center justify-between pb-1 border-b border-purple-500/30">
+<span class="font-bold text-white text-[11px]">Inspection Insight</span>
+<span class="text-[10px] text-purple-300">Click to close</span>
+</div>
+<p class="text-[11px] text-purple-200 mt-2 leading-relaxed detail-text"></p>
+<div class="mt-2 text-[10px] text-[#c4b5fd]/80">Confidence: <span class="font-mono text-purple-200 conf-text"></span></div>
+</div>
+<div class="absolute inset-x-0 bottom-0 p-2 sm:p-2.5 bg-gradient-to-t from-black/85 via-black/50 to-transparent text-left z-10">
+<p class="text-[11px] sm:text-xs font-bold text-white leading-tight">Banane 1 â‚¬30</p>
+<p class="text-[9px] sm:text-[10px] text-purple-200/70">Produce aisle snapshot</p>
+</div>
+</div>
+<!-- Card 6: Office Desk -->
+<div class="demo-card group relative rounded-xl sm:rounded-2xl overflow-hidden border border-purple-500/25 bg-[#190f2b] flex flex-col justify-end aspect-[4/3] sm:aspect-auto shadow-md transition-all duration-300 cursor-pointer select-none" data-confidence="99.7%" data-detail="Legitimate camera photon shot noise and coherent optical reflection paths" data-name="Office Desk" data-synthetic="false" onclick="toggleCardDetail(this)">
+<img alt="Desk can and phone" class="card-img absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" src="img/stitch-5.jpg">
+<div class="scan-overlay absolute inset-0 bg-purple-900/40 backdrop-blur-[1px] opacity-0 transition-opacity duration-300 pointer-events-none flex flex-col items-center justify-center overflow-hidden">
+<div class="laser-line absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-[#c084fc] to-transparent shadow-[0_0_12px_#c084fc] pointer-events-none hidden"></div>
+<div class="radar-box flex flex-col items-center gap-1">
+<span class="material-symbols-outlined text-purple-200 text-3xl sm:text-4xl animate-pulse">biotech</span>
+<span class="text-[10px] sm:text-xs font-mono text-purple-200 tracking-wider">ANALYZING...</span>
+</div>
+</div>
+<div class="result-tag absolute top-2 right-2 px-2 sm:px-2.5 py-1 rounded-full text-[9px] sm:text-[11px] font-bold tracking-wide hidden transition-all shadow-lg backdrop-blur-md z-20"></div>
+<div class="detail-overlay absolute inset-0 bg-purple-950/90 backdrop-blur-sm p-3 flex flex-col justify-center text-left text-xs opacity-0 pointer-events-none transition-opacity duration-200 z-30">
+<div class="flex items-center justify-between pb-1 border-b border-purple-500/30">
+<span class="font-bold text-white text-[11px]">Inspection Insight</span>
+<span class="text-[10px] text-purple-300">Click to close</span>
+</div>
+<p class="text-[11px] text-purple-200 mt-2 leading-relaxed detail-text"></p>
+<div class="mt-2 text-[10px] text-[#c4b5fd]/80">Confidence: <span class="font-mono text-purple-200 conf-text"></span></div>
+</div>
+<div class="absolute inset-x-0 bottom-0 p-2 sm:p-2.5 bg-gradient-to-t from-black/85 via-black/50 to-transparent text-left z-10">
+<p class="text-[11px] sm:text-xs font-bold text-white leading-tight">Office Desk</p>
+<p class="text-[9px] sm:text-[10px] text-purple-200/70">Camera photograph</p>
+</div>
+</div>
+</div>
+<!-- Controls and Live Status Bar -->
+<div class="mt-3 sm:mt-4 shrink-0 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 flex-wrap">
+<button class="inline-flex items-center justify-center h-10 sm:h-12 px-7 sm:px-9 rounded-full bg-gradient-to-r from-purple-600 via-[#8b5cf6] to-purple-600 hover:from-purple-500 hover:to-purple-500 text-white font-bold text-xs sm:text-sm hover:shadow-[0_0_28px_rgba(168,85,247,0.65)] hover:scale-105 active:scale-95 transition-all border border-purple-400/40 cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed group shadow-lg" id="run-detector-btn" onclick="runDetectorDemo()">
+<span class="material-symbols-outlined mr-2 text-[18px] text-purple-200 group-hover:rotate-45 transition-transform" id="detector-btn-icon">radar</span>
+<span id="detector-btn-text">Run the detector</span>
+</button>
+<div class="flex items-center gap-2.5 px-4 py-2 rounded-full bg-[#190f2b] border border-purple-500/25">
+<span class="w-2 h-2 rounded-full bg-purple-400" id="status-indicator"></span>
+<span class="text-xs sm:text-sm text-purple-200/80 font-medium" id="detector-status">Ready to test 6 samples in tab</span>
+</div>
+</div>
+</div>
+</section>
+<!-- ==================== SECTION 2: WHAT SIFT BLOCKS (DARK MODE) ==================== -->
+<section class="snap-section w-full pt-20 sm:pt-24 pb-8 bg-[#120a20] overflow-hidden" id="sec-2">
+<div class="max-w-[1520px] mx-auto px-5 sm:px-10 w-full flex-1 flex flex-col justify-center min-h-0">
+<div class="text-center max-w-3xl mx-auto mb-6 sm:mb-8 shrink-0"><h2 class="text-3xl sm:text-5xl font-bold text-white leading-tight">Image threats. Stopped instantly.</h2><p class="text-xs sm:text-base text-[#c4b5fd] mt-1 max-w-lg mx-auto">Zero delay. Zero data collected.</p></div>
+<!-- Enormous Two-Column Cards Filling Height and Width -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-10 max-w-6xl mx-auto w-full items-stretch flex-1 max-h-[580px]">
+<!-- Category 01 -->
 
-    io.observe(reality);
+<!-- Category 02 -->
+<div class="group p-8 sm:p-10 rounded-3xl bg-[#190f2b] shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-purple-500/20 flex flex-col justify-between hover:border-purple-400/50 hover:shadow-[0_0_35px_rgba(168,85,247,0.25)] hover:-translate-y-1 transition-all duration-300">
+<div class="space-y-5 sm:space-y-6">
+<div class="flex items-center justify-between">
+<div class="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-purple-600/30 border border-purple-500/40 text-purple-200 flex items-center justify-center shadow-inner group-hover:scale-105 transition-transform">
+<span class="material-symbols-outlined text-[36px] sm:text-[42px]">photo_camera_front</span>
+</div>
+
+</div>
+<div>
+<h3 class="text-2xl sm:text-3xl lg:text-4xl font-bold text-white">Artificially Created Photos</h3>
+<p class="text-sm sm:text-base lg:text-lg text-[#c4b5fd] leading-relaxed mt-3">
+  Synthesized facial portraits, forged official documents, manipulated disaster scenes, and doctored prescription labels specifically designed to swindle donors and seniors.
+</p>
+</div>
+<!-- Detailed Visual Tag Indicators -->
+<div class="space-y-3 pt-2">
+<div class="flex items-center gap-3 p-3.5 rounded-2xl bg-purple-950/40 border border-purple-500/20 text-sm sm:text-base text-purple-200 font-medium">
+<span class="material-symbols-outlined text-purple-400 text-[22px]">aspect_ratio</span>
+<span>Artificially Generated Photos and Facial Features</span>
+</div>
+<div class="flex items-center gap-3 p-3.5 rounded-2xl bg-purple-950/40 border border-purple-500/20 text-sm sm:text-base text-purple-200 font-medium">
+<span class="material-symbols-outlined text-purple-400 text-[22px]">fact_check</span>
+<span>Flagged Warning Overlay</span>
+</div>
+</div>
+</div>
+<div class="pt-5 border-t border-purple-500/15 flex items-center justify-between text-sm sm:text-base">
+<div class="flex items-center gap-2.5 text-purple-400 font-semibold">
+<span class="material-symbols-outlined text-[22px]">check_circle</span>
+
+</div>
+<span class="text-purple-300 font-bold bg-purple-950/70 border border-purple-500/30 px-3.5 py-1 rounded-full text-xs sm:text-sm">High Confidence</span>
+</div>
+</div>
+<div class="group relative rounded-3xl bg-[#190f2b] shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-purple-500/20 overflow-hidden flex flex-col justify-end hover:border-purple-400/50 hover:shadow-[0_0_35px_rgba(168,85,247,0.25)] hover:-translate-y-1 transition-all duration-300 min-h-[360px] md:min-h-full"><img src="img/stitch-6.jpg" alt="AI Generated Synthetic Landscape Example" class="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"><div class="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent pointer-events-none"></div><div class="absolute top-4 left-4 z-20 flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-purple-950/90 border border-purple-400/70 shadow-[0_0_16px_rgba(168,85,247,0.55)] backdrop-blur-md text-white text-xs sm:text-sm font-bold tracking-wide"><span class="w-2 h-2 rounded-full bg-purple-400 animate-pulse"></span><span>âš ï¸ Fake Image</span></div><div class="absolute top-4 right-4 z-20 px-3 py-1 rounded-full bg-[#120a20]/85 border border-purple-500/30 text-purple-200 text-xs font-mono font-medium backdrop-blur-md">AI Synthetic</div><div class="relative z-10 p-6 sm:p-8 space-y-2"><div class="flex items-center gap-2 text-purple-300 text-xs sm:text-sm font-semibold"><span class="material-symbols-outlined text-[18px] text-purple-400">shield</span><span>Detected in 0.04s by sift</span></div><h4 class="text-lg sm:text-xl font-bold text-white tracking-tight">Hyper-Realistic Synthetic Landscape</h4><p class="text-xs sm:text-sm text-[#c4b5fd]/80 leading-relaxed">Generated landscape flagged in real-time before deceptive environmental or event imagery reaches feeds.</p></div></div></div>
+</div>
+</section>
+<!-- ==================== SECTION 3: HOW EASY IS IT TO USE? (DARK MODE) ==================== -->
+<section class="snap-section w-full pt-20 sm:pt-24 pb-8 bg-[#0b0614] overflow-hidden" id="sec-3">
+<div class="max-w-[1520px] mx-auto px-5 sm:px-10 w-full flex-1 flex flex-col justify-center text-center min-h-0">
+<div class="max-w-3xl mx-auto mb-6 sm:mb-10 text-center shrink-0"><h2 class="text-3xl sm:text-5xl font-bold text-white tracking-tight leading-tight">Setup in 3 steps.</h2><p class="text-xs sm:text-base text-[#c4b5fd] mt-1 max-w-md mx-auto">Runs silently in your browser background.</p></div>
+<!-- 3 Generous Full-Height Step Cards -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 max-w-6xl mx-auto w-full items-stretch flex-1 max-h-[540px]">
+<!-- Step 1 -->
+<div class="p-7 sm:p-9 rounded-3xl bg-[#190f2b] border border-purple-500/20 hover:border-purple-400/50 hover:shadow-[0_0_35px_rgba(168,85,247,0.2)] hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between text-left">
+<div class="space-y-4 sm:space-y-5">
+<div class="flex items-center justify-between">
+<div class="w-14 sm:w-16 h-14 sm:h-16 rounded-2xl bg-purple-600/30 border border-purple-500/40 text-white flex items-center justify-center text-2xl font-bold shadow-md ring-4 ring-purple-500/20">
+  1
+</div>
+<span class="material-symbols-outlined text-purple-400 text-[32px]">touch_app</span>
+</div>
+<h3 class="text-xl sm:text-2xl lg:text-3xl font-bold text-white pt-1">
+<span class="pop-word text-base sm:text-lg">Click</span> Once
+</h3>
+<p class="text-sm sm:text-base lg:text-lg text-[#c4b5fd] leading-relaxed">
+  Tap the Download" button. The extension installs in under thirty seconds as a zip file.</p>
+</div>
+<div class="mt-6 pt-4 border-t border-purple-500/15">
+<div class="inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-purple-200">
+<span class="material-symbols-outlined text-purple-400 text-[20px]">check_circle</span>
+<span>No sign-ups or credit cards</span>
+</div>
+</div>
+</div>
+<!-- Step 2 -->
+<div class="p-7 sm:p-9 rounded-3xl bg-[#190f2b] border border-purple-500/20 hover:border-purple-400/50 hover:shadow-[0_0_35px_rgba(168,85,247,0.2)] hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between text-left">
+<div class="space-y-4 sm:space-y-5">
+<div class="flex items-center justify-between">
+<div class="w-14 sm:w-16 h-14 sm:h-16 rounded-2xl bg-purple-600/30 border border-purple-500/40 text-white flex items-center justify-center text-2xl font-bold shadow-md ring-4 ring-purple-500/20">
+  2
+</div>
+<span class="material-symbols-outlined text-purple-400 text-[32px]">power_settings_new</span>
+</div>
+<h3 class="text-xl sm:text-2xl lg:text-3xl font-bold text-white pt-1">
+<span class="pop-word text-base sm:text-lg">Automatic</span> Setup
+</h3>
+<p class="text-sm sm:text-base lg:text-lg text-[#c4b5fd] leading-relaxed">Extract the zip file to download the project file directly as a chrome extension.</p>
+</div>
+<div class="mt-6 pt-4 border-t border-purple-500/15">
+<div class="inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-purple-200">
+<span class="material-symbols-outlined text-purple-400 text-[20px]">check_circle</span>
+<span>100% autonomous operation</span>
+</div>
+</div>
+</div>
+<!-- Step 3 -->
+<div class="p-7 sm:p-9 rounded-3xl bg-[#190f2b] border border-purple-500/20 hover:border-purple-400/50 hover:shadow-[0_0_35px_rgba(168,85,247,0.2)] hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between text-left">
+<div class="space-y-4 sm:space-y-5">
+<div class="flex items-center justify-between">
+<div class="w-14 sm:w-16 h-14 sm:h-16 rounded-2xl bg-purple-600/30 border border-purple-500/40 text-white flex items-center justify-center text-2xl font-bold shadow-md ring-4 ring-purple-500/20">
+  3
+</div>
+<span class="material-symbols-outlined text-purple-400 text-[32px]">verified</span>
+</div>
+<h3 class="text-xl sm:text-2xl lg:text-3xl font-bold text-white pt-1">
+<span class="pop-word text-base sm:text-lg">Silent</span> Guard
+</h3>
+<p class="text-sm sm:text-base lg:text-lg text-[#c4b5fd] leading-relaxed">
+  Read news, scroll social media, and read emails in total safety. sift only lights up when a fake image or scam video is detected.
+</p>
+</div>
+<div class="mt-6 pt-4 border-t border-purple-500/15">
+<div class="inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-purple-200">
+<span class="material-symbols-outlined text-purple-400 text-[20px]">check_circle</span>
+<span>Continuous silent shield</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- ==================== SECTION 4: FAQ (DARK MODE) ==================== -->
+<section class="snap-section w-full pt-20 sm:pt-24 pb-8 bg-[#120a20] overflow-hidden flex flex-col justify-center" id="sec-4">
+<div class="max-w-[1520px] mx-auto px-5 sm:px-10 w-full flex-1 flex flex-col justify-center min-h-0">
+<div class="text-center max-w-3xl mx-auto mb-6 sm:mb-8 shrink-0">
+
+<h2 class="text-3xl sm:text-5xl lg:text-6xl font-bold text-white leading-tight drop-shadow-[0_2px_12px_rgba(0,0,0,0.8)]">Frequently asked questions</h2>
+<p class="text-sm sm:text-lg lg:text-xl text-[#c4b5fd] mt-2 max-w-2xl mx-auto">Everything you need to know about staying protected with sift on your everyday devices.</p>
+</div>
+<!-- Expansive, Spacious FAQ Accordion Container -->
+<div class="max-w-5xl mx-auto w-full space-y-4 sm:space-y-5">
+<!-- FAQ 1 -->
+<div class="rounded-3xl bg-[#190f2b] border border-purple-500/20 shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden transition-all duration-200 hover:border-purple-400/40">
+<button class="w-full py-5 sm:py-6 px-6 sm:px-9 text-left flex items-center justify-between gap-5 font-bold text-base sm:text-xl text-white hover:text-purple-300 transition-colors" onclick="toggleFaq(1)" type="button">
+<div class="flex items-center gap-4">
+<span class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-purple-900/40 border border-purple-500/30 text-purple-300 flex items-center justify-center text-sm sm:text-base font-bold shrink-0">Q1</span>
+<span>Does sift slow down my computer or internet connection?</span>
+</div>
+<span class="material-symbols-outlined text-[24px] sm:text-[28px] text-purple-400 transition-transform duration-200 rotate-180 shrink-0" id="faq-icon-1" style="transform: rotate(180deg);">expand_more</span>
+</button>
+<div class="px-6 sm:px-9 pb-6 sm:pb-7 pt-0 text-sm sm:text-base lg:text-lg text-[#c4b5fd] leading-relaxed block" id="faq-content-1">
+  Not at all. sift was engineered specifically with ultra-efficient client-side WebAssembly models. It only inspects pictures and video frames right when they appear on your screen, taking up virtually zero CPU or memory. You will never experience browser lag or slowed internet streaming.
+</div>
+</div>
+<!-- FAQ 2 -->
+<div class="rounded-3xl bg-[#190f2b] border border-purple-500/20 shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden transition-all duration-200 hover:border-purple-400/40">
+<button class="w-full py-5 sm:py-6 px-6 sm:px-9 text-left flex items-center justify-between gap-5 font-bold text-base sm:text-xl text-white hover:text-purple-300 transition-colors" onclick="toggleFaq(2)" type="button">
+<div class="flex items-center gap-4">
+<span class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-purple-900/40 border border-purple-500/30 text-purple-300 flex items-center justify-center text-sm sm:text-base font-bold shrink-0">Q2</span>
+<span>Does sift collect my personal information, banking logins, or passwords?</span>
+</div>
+<span class="material-symbols-outlined text-[24px] sm:text-[28px] text-purple-400 transition-transform duration-200 shrink-0" id="faq-icon-2" style="transform: rotate(0deg);">expand_more</span>
+</button>
+<div class="px-6 sm:px-9 pb-6 sm:pb-7 pt-0 text-sm sm:text-base lg:text-lg text-[#c4b5fd] leading-relaxed hidden" id="faq-content-2">
+  Never. sift adheres to an immutable Zero-Tracking Oath. We do not require user accounts, we never see your banking details, we never read emails or chat messages, and images are checked locally in your machine's temporary memory and immediately discarded.
+</div>
+</div>
+<!-- FAQ 3 -->
+<div class="rounded-3xl bg-[#190f2b] border border-purple-500/20 shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden transition-all duration-200 hover:border-purple-400/40">
+<button class="w-full py-5 sm:py-6 px-6 sm:px-9 text-left flex items-center justify-between gap-5 font-bold text-base sm:text-xl text-white hover:text-purple-300 transition-colors" onclick="toggleFaq(3)" type="button">
+<div class="flex items-center gap-4">
+<span class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-purple-900/40 border border-purple-500/30 text-purple-300 flex items-center justify-center text-sm sm:text-base font-bold shrink-0">Q3</span>
+<span>Is sift really 100% free? Are there future subscriptions or hidden costs?</span>
+</div>
+<span class="material-symbols-outlined text-[24px] sm:text-[28px] text-purple-400 transition-transform duration-200 shrink-0" id="faq-icon-3" style="transform: rotate(0deg);">expand_more</span>
+</button>
+<div class="px-6 sm:px-9 pb-6 sm:pb-7 pt-0 text-sm sm:text-base lg:text-lg text-[#c4b5fd] leading-relaxed hidden" id="faq-content-3">
+  Yes, sift is completely free for individual seniors and families. There are no trial periods, no ads, and we will never ask for payment. Our public initiative is supported by university research grants and non-profit cyber defense trusts dedicated to elder protection.
+</div>
+</div>
+</div>
+<!-- FAQ support micro-card to ground layout -->
+
+</div>
+</section>
+<!-- ==================== SECTION 5: FAMILY STORIES & RATINGS (DARK MODE) ==================== -->
+<section class="snap-section w-full pt-20 sm:pt-24 pb-4 bg-[#0b0614] overflow-hidden flex flex-col justify-between" id="sec-5">
+<div class="max-w-[1520px] mx-auto px-5 sm:px-10 w-full flex-1 flex flex-col justify-between min-h-0">
+<div class="w-full my-auto flex flex-col justify-center">
+<!-- Header with Carousel Controls -->
+<div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6 sm:mb-8 shrink-0">
+<div>
+<div class="flex items-center gap-2.5 mb-2">
+<span class="text-xs sm:text-sm font-bold text-purple-300 uppercase tracking-widest">Family Stories &amp; Ratings</span>
+<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-950/60 text-purple-300 text-xs sm:text-sm font-semibold border border-purple-500/30">
+<span class="w-2 h-2 rounded-full bg-purple-400 animate-pulse shadow-[0_0_8px_#c084fc]"></span>
+  Verified Testimonials
+</span>
+</div>
+<h2 class="text-3xl sm:text-5xl lg:text-6xl font-bold text-white leading-tight drop-shadow-[0_2px_12px_rgba(0,0,0,0.8)]">
+  Real peace of mind for families everywhere
+</h2>
+<p class="text-sm sm:text-lg text-[#c4b5fd] mt-1.5 hidden sm:block">
+  Read how seniors and adult children protect each other from modern artificial scams.
+</p>
+</div>
+<!-- Carousel navigation pill -->
+<div class="flex items-center gap-3 sm:gap-4 shrink-0 bg-[#190f2b] p-2 rounded-full border border-purple-500/30 shadow-lg self-start sm:self-auto">
+<span class="text-xs sm:text-sm font-bold text-purple-200 px-3.5 py-1.5 rounded-full bg-purple-950/80 border border-purple-500/30" id="review-counter">Set 3 of 3 (Reviews 5-6 of 6)</span>
+<div class="flex items-center gap-1.5">
+<button aria-label="Go to story set 1" class="h-2.5 rounded-full transition-all duration-300 w-2.5 bg-purple-900/80 hover:bg-purple-400 border border-purple-500/30" id="dot-0" onclick="jumpToStory(0)" type="button"></button>
+<button aria-label="Go to story set 2" class="h-2.5 rounded-full transition-all duration-300 w-2.5 bg-purple-900/80 hover:bg-purple-400 border border-purple-500/30" id="dot-1" onclick="jumpToStory(1)" type="button"></button>
+<button aria-label="Go to story set 3" class="h-2.5 rounded-full transition-all duration-300 w-7 bg-purple-400 shadow-[0_0_8px_#a855f7]" id="dot-2" onclick="jumpToStory(2)" type="button"></button>
+</div>
+<div class="flex items-center gap-1 pl-1">
+<button aria-label="Previous story set" class="w-9 h-9 rounded-full bg-purple-950/60 hover:bg-purple-900/80 text-purple-200 hover:text-white transition-all flex items-center justify-center active:scale-90 border border-purple-500/20" onclick="prevStory()" type="button">
+<span class="material-symbols-outlined text-[20px]">arrow_back</span>
+</button>
+<button aria-label="Next story set" class="w-9 h-9 rounded-full bg-gradient-to-r from-purple-600 to-purple-500 text-white hover:brightness-110 transition-all flex items-center justify-center shadow-[0_0_14px_rgba(168,85,247,0.4)] active:scale-90" onclick="nextStory()" type="button">
+<span class="material-symbols-outlined text-[20px]">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Slider Track Container: Substantial Height and Broad Cards -->
+<div class="relative w-full overflow-hidden rounded-3xl" id="slider-viewport">
+<div class="flex smooth-carousel-track will-change-transform" id="stories-track" style="transform: translateX(-200%);">
+<!-- Slide Set 1: Reviews 1 & 2 -->
+<div class="w-full shrink-0 grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-10 px-1">
+<div class="p-8 sm:p-11 rounded-3xl bg-[#190f2b] shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-purple-500/20 flex flex-col justify-between space-y-6">
+<div class="space-y-4">
+<div class="flex items-center justify-between">
+<div class="flex text-[#facc15]">
+<span class="material-symbols-outlined text-[24px] sm:text-[26px]">star</span>
+<span class="material-symbols-outlined text-[24px] sm:text-[26px]">star</span>
+<span class="material-symbols-outlined text-[24px] sm:text-[26px]">star</span>
+<span class="material-symbols-outlined text-[24px] sm:text-[26px]">star</span>
+<span class="material-symbols-outlined text-[24px] sm:text-[26px]">star</span>
+</div>
+<span class="text-xs sm:text-sm text-purple-300 font-bold uppercase tracking-wider px-3 py-1 rounded-full bg-purple-950/70 border border-purple-500/30">Verified User</span>
+</div>
+<p class="text-base sm:text-xl lg:text-2xl text-purple-100 italic leading-relaxed">
+  â€œMy granddaughter installed sift in thirty seconds flat. Last Tuesday, a video popped up on Facebook that looked exactly like our local news anchor telling us to immediately withdraw cash. sift placed a big purple badge across it flagging an AI impersonation. What a relief!â€
+</p>
+</div>
+<div class="flex items-center gap-4 pt-5 border-t border-purple-500/15">
+<div class="w-13 h-13 sm:w-14 sm:h-14 rounded-2xl bg-purple-900/40 border border-purple-500/30 text-purple-200 flex items-center justify-center shrink-0 font-bold text-lg shadow-inner">MJ</div>
+<div>
+<p class="text-base sm:text-lg font-bold text-white">Martha Jenkins, 74</p>
+<p class="text-xs sm:text-sm text-[#c4b5fd]">Retired High School Teacher â€¢ Columbus, Ohio</p>
+</div>
+</div>
+</div>
+<div class="p-8 sm:p-11 rounded-3xl bg-[#190f2b] shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-purple-500/20 flex flex-col justify-between space-y-6">
+<div class="space-y-4">
+<div class="flex items-center justify-between">
+<div class="flex text-[#facc15]">
+<span class="material-symbols-outlined text-[24px] sm:text-[26px]">star</span>
+<span class="material-symbols-outlined text-[24px] sm:text-[26px]">star</span>
+<span class="material-symbols-outlined text-[24px] sm:text-[26px]">star</span>
+<span class="material-symbols-outlined text-[24px] sm:text-[26px]">star</span>
+<span class="material-symbols-outlined text-[24px] sm:text-[26px]">star</span>
+</div>
+<span class="text-xs sm:text-sm text-purple-300 font-bold uppercase tracking-wider px-3 py-1 rounded-full bg-purple-950/70 border border-purple-500/30">Verified Family</span>
+</div>
+<p class="text-base sm:text-xl lg:text-2xl text-purple-100 italic leading-relaxed">
+  â€œWorking in technology, I was genuinely terrified of what modern voice clones could do to my elderly parents. We put sift on both of their laptops. It gives our entire family tremendous confidence that they can browse independently without fear.â€
+</p>
+</div>
+<div class="flex items-center gap-4 pt-5 border-t border-purple-500/15">
+<div class="w-13 h-13 sm:w-14 sm:h-14 rounded-2xl bg-purple-600/30 border border-purple-500/40 text-purple-200 flex items-center justify-center shrink-0 font-bold text-lg shadow-inner">DV</div>
+<div>
+<p class="text-base sm:text-lg font-bold text-white">David Vance, 45</p>
+<p class="text-xs sm:text-sm text-[#c4b5fd]">Son &amp; Family Caregiver â€¢ Denver, Colorado</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Slide Set 2: Reviews 3 & 4 -->
+<div class="w-full shrink-0 grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-10 px-1">
+<div class="p-8 sm:p-11 rounded-3xl bg-[#190f2b] shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-purple-500/20 flex flex-col justify-between space-y-6">
+<div class="space-y-4">
+<div class="flex items-center justify-between">
+<div class="flex text-[#facc15]">
+<span class="material-symbols-outlined text-[24px] sm:text-[26px]">star</span>
+<span class="material-symbols-outlined text-[24px] sm:text-[26px]">star</span>
+<span class="material-symbols-outlined text-[24px] sm:text-[26px]">star</span>
+<span class="material-symbols-outlined text-[24px] sm:text-[26px]">star</span>
+<span class="material-symbols-outlined text-[24px] sm:text-[26px]">star</span>
+</div>
+<span class="text-xs sm:text-sm text-purple-300 font-bold uppercase tracking-wider px-3 py-1 rounded-full bg-purple-950/70 border border-purple-500/30">Verified User</span>
+</div>
+<p class="text-base sm:text-xl lg:text-2xl text-purple-100 italic leading-relaxed">
+  â€œI received an email link showing what looked like a genuine emergency alert from our state governor. sift instantly flagged the video: â€˜Synthetic Lip Movement Detectedâ€™. That warning kept me from donating to a fraudulent crisis fund.â€
+</p>
+</div>
+<div class="flex items-center gap-4 pt-5 border-t border-purple-500/15">
+<div class="w-13 h-13 sm:w-14 sm:h-14 rounded-2xl bg-purple-900/40 border border-purple-500/30 text-purple-200 flex items-center justify-center shrink-0 font-bold text-lg shadow-inner">EV</div>
+<div>
+<p class="text-base sm:text-lg font-bold text-white">Eleanor Vance, 81</p>
+<p class="text-xs sm:text-sm text-[#c4b5fd]">Retired Librarian â€¢ Scottsdale, Arizona</p>
+</div>
+</div>
+</div>
+<div class="p-8 sm:p-11 rounded-3xl bg-[#190f2b] shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-purple-500/20 flex flex-col justify-between space-y-6">
+<div class="space-y-4">
+<div class="flex items-center justify-between">
+<div class="flex text-[#facc15]">
+<span class="material-symbols-outlined text-[24px] sm:text-[26px]">star</span>
+<span class="material-symbols-outlined text-[24px] sm:text-[26px]">star</span>
+<span class="material-symbols-outlined text-[24px] sm:text-[26px]">star</span>
+<span class="material-symbols-outlined text-[24px] sm:text-[26px]">star</span>
+<span class="material-symbols-outlined text-[24px] sm:text-[26px]">star</span>
+</div>
+<span class="text-xs sm:text-sm text-purple-300 font-bold uppercase tracking-wider px-3 py-1 rounded-full bg-purple-950/70 border border-purple-500/30">Verified Family</span>
+</div>
+<p class="text-base sm:text-xl lg:text-2xl text-purple-100 italic leading-relaxed">
+  â€œLiving four states away from my 86-year-old mother used to give me continuous anxiety whenever new AI scam alerts appeared on TV. Knowing sift runs silently inside her browser gives both of us absolute peace of mind.â€
+</p>
+</div>
+<div class="flex items-center gap-4 pt-5 border-t border-purple-500/15">
+<div class="w-13 h-13 sm:w-14 sm:h-14 rounded-2xl bg-purple-600/30 border border-purple-500/40 text-purple-200 flex items-center justify-center shrink-0 font-bold text-lg shadow-inner">RC</div>
+<div>
+<p class="text-base sm:text-lg font-bold text-white">Robert Chen, 52</p>
+<p class="text-xs sm:text-sm text-[#c4b5fd]">Civil Engineer &amp; Son â€¢ Seattle, Washington</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Slide Set 3: Reviews 5 & 6 -->
+<div class="w-full shrink-0 grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-10 px-1">
+<div class="p-8 sm:p-11 rounded-3xl bg-[#190f2b] shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-purple-500/20 flex flex-col justify-between space-y-6">
+<div class="space-y-4">
+<div class="flex items-center justify-between">
+<div class="flex text-[#facc15]">
+<span class="material-symbols-outlined text-[24px] sm:text-[26px]">star</span>
+<span class="material-symbols-outlined text-[24px] sm:text-[26px]">star</span>
+<span class="material-symbols-outlined text-[24px] sm:text-[26px]">star</span>
+<span class="material-symbols-outlined text-[24px] sm:text-[26px]">star</span>
+<span class="material-symbols-outlined text-[24px] sm:text-[26px]">star</span>
+</div>
+<span class="text-xs sm:text-sm text-purple-300 font-bold uppercase tracking-wider px-3 py-1 rounded-full bg-purple-950/70 border border-purple-500/30">Verified Users</span>
+</div>
+<p class="text-base sm:text-xl lg:text-2xl text-purple-100 italic leading-relaxed">
+  â€œNeither of us grew up with computers. sift doesnâ€™t complicate things with confusing settings. When a fake doctor photo appeared on a health blog, sift immediately marked it right on screen with clear text.â€
+</p>
+</div>
+<div class="flex items-center gap-4 pt-5 border-t border-purple-500/15">
+<div class="w-13 h-13 sm:w-14 sm:h-14 rounded-2xl bg-purple-900/40 border border-purple-500/30 text-purple-200 flex items-center justify-center shrink-0 font-bold text-lg shadow-inner">BM</div>
+<div>
+<p class="text-base sm:text-lg font-bold text-white">Barbara &amp; Tom Miller, 78</p>
+<p class="text-xs sm:text-sm text-[#c4b5fd]">Retired Postal Worker &amp; Nurse â€¢ Fort Myers, FL</p>
+</div>
+</div>
+</div>
+<div class="p-8 sm:p-11 rounded-3xl bg-[#190f2b] shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-purple-500/20 flex flex-col justify-between space-y-6">
+<div class="space-y-4">
+<div class="flex items-center justify-between">
+<div class="flex text-[#facc15]">
+<span class="material-symbols-outlined text-[24px] sm:text-[26px]">star</span>
+<span class="material-symbols-outlined text-[24px] sm:text-[26px]">star</span>
+<span class="material-symbols-outlined text-[24px] sm:text-[26px]">star</span>
+<span class="material-symbols-outlined text-[24px] sm:text-[26px]">star</span>
+<span class="material-symbols-outlined text-[24px] sm:text-[26px]">star</span>
+</div>
+<span class="text-xs sm:text-sm text-purple-300 font-bold uppercase tracking-wider px-3 py-1 rounded-full bg-purple-950/70 border border-purple-500/30">Verified Family</span>
+</div>
+<p class="text-base sm:text-xl lg:text-2xl text-purple-100 italic leading-relaxed">
+  â€œThe Zero-Tracking guarantee was essential for my father, who values his privacy above all else. sift does not inspect files or sell dataâ€”it simply shields him against deceptive media 24/7.â€
+</p>
+</div>
+<div class="flex items-center gap-4 pt-5 border-t border-purple-500/15">
+<div class="w-13 h-13 sm:w-14 sm:h-14 rounded-2xl bg-purple-600/30 border border-purple-500/40 text-purple-200 flex items-center justify-center shrink-0 font-bold text-lg shadow-inner">SM</div>
+<div>
+<p class="text-base sm:text-lg font-bold text-white">Sarah Al-Mansoor, 39</p>
+<p class="text-xs sm:text-sm text-[#c4b5fd]">Daughter &amp; Health Administrator â€¢ Chicago, IL</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Integrated Compact Footer Bar -->
+<footer class="w-full border-t border-purple-500/15 pt-3.5 pb-2.5 shrink-0">
+<div class="flex flex-col sm:flex-row items-center justify-between gap-2.5 text-xs sm:text-sm text-[#c4b5fd]/80">
+<div class="flex items-center gap-3">
+<span class="font-bold text-white text-sm sm:text-base">sift</span>
+
+</div>
+<div class="flex items-center gap-5 text-xs sm:text-sm font-medium">
+<span class="text-purple-400">â€¢</span>
+</div>
+</div>
+</footer>
+</div>
+</section>
+</main>
+<!-- Interactive Logic for Carousel, Snapping, and Nebula WebGL -->
+<script>
+  // WebGL Nebula Shader Canvas for Title Page
+  const canvas = document.getElementById('nebula-canvas');
+  if (canvas) {
+    const gl = canvas.getContext('webgl');
+    if (gl) {
+      function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        gl.viewport(0, 0, canvas.width, canvas.height);
+      }
+      window.addEventListener('resize', resizeCanvas);
+      resizeCanvas();
+
+      const vsSource = `
+        attribute vec2 position;
+        void main() {
+          gl_Position = vec4(position, 0.0, 1.0);
+        }
+      `;
+
+      const fsSource = `
+        precision mediump float;
+        uniform vec2 u_resolution;
+        uniform float u_time;
+
+        void main() {
+          vec2 st = gl_FragCoord.xy / u_resolution.xy;
+          st = st * 2.0 - 1.0;
+          st.x *= u_resolution.x / u_resolution.y;
+
+          float t = u_time * 0.28;
+          float d = length(st);
+          
+          float n1 = sin(st.x * 2.4 + t) * cos(st.y * 2.4 + t);
+          float n2 = sin(st.x * 3.8 - t * 0.75) * cos(st.y * 3.8 + t * 0.75);
+          float cloud = smoothstep(-0.6, 0.9, n1 + n2 * 0.5);
+
+          vec3 col1 = vec3(0.09, 0.015, 0.17); // rich deep purple #17042c
+          vec3 col2 = vec3(0.38, 0.11, 0.62); // luminous amethyst
+          vec3 col3 = vec3(0.58, 0.28, 0.98); // bright neon violet
+
+          vec3 finalColor = mix(col1, col2, cloud * (1.2 - d * 0.65));
+          finalColor = mix(finalColor, col3, pow(max(0.0, cloud * 0.8), 2.2));
+
+          gl_FragColor = vec4(finalColor, 1.0);
+        }
+      `;
+
+      function createShader(gl, type, source) {
+        const shader = gl.createShader(type);
+        gl.shaderSource(shader, source);
+        gl.compileShader(shader);
+        return shader;
+      }
+
+      const vs = createShader(gl, gl.VERTEX_SHADER, vsSource);
+      const fs = createShader(gl, gl.FRAGMENT_SHADER, fsSource);
+      const program = gl.createProgram();
+      gl.attachShader(program, vs);
+      gl.attachShader(program, fs);
+      gl.linkProgram(program);
+      gl.useProgram(program);
+
+      const buffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+        -1, -1,
+         1, -1,
+        -1,  1,
+        -1,  1,
+         1, -1,
+         1,  1,
+      ]), gl.STATIC_DRAW);
+
+      const posLocation = gl.getAttribLocation(program, 'position');
+      gl.enableVertexAttribArray(posLocation);
+      gl.vertexAttribPointer(posLocation, 2, gl.FLOAT, false, 0, 0);
+
+      const resLocation = gl.getUniformLocation(program, 'u_resolution');
+      const timeLocation = gl.getUniformLocation(program, 'u_time');
+
+      let startTime = performance.now();
+      function renderNebula() {
+        const now = performance.now();
+        gl.uniform2f(resLocation, canvas.width, canvas.height);
+        gl.uniform1f(timeLocation, (now - startTime) * 0.001);
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
+        requestAnimationFrame(renderNebula);
+      }
+      requestAnimationFrame(renderNebula);
+    }
+  }
+
+  // Full-Page Snapping Dot Navigation
+  const scroller = document.getElementById('main-scroller');
+  const snapDots = document.querySelectorAll('.snap-dot');
+  const navBtns = document.querySelectorAll('.nav-item-btn');
+  const totalStorySlides = 3;
+  let currentStorySlide = 0;
+
+  function scrollToSnap(index) {
+    const sections = [
+      document.getElementById('title-page'),
+      document.getElementById('sec-demo'),
+      document.getElementById('sec-2'),
+      document.getElementById('sec-3'),
+      document.getElementById('sec-4'),
+      document.getElementById('sec-5')
+    ];
+    if (sections[index]) {
+      sections[index].scrollIntoView({ behavior: 'smooth' });
+    }
+  }
+
+  // Update active dot and navigation bar based on scroll position
+  scroller.addEventListener('scroll', () => {
+    const scrollPosition = scroller.scrollTop;
+    const windowHeight = window.innerHeight;
+    const currentIndex = Math.min(Math.round(scrollPosition / windowHeight), snapDots.length - 1);
+
+    snapDots.forEach((dot, idx) => {
+      if (idx === currentIndex) {
+        dot.className = 'snap-dot w-3.5 h-3.5 rounded-full transition-all duration-300 bg-purple-400 ring-4 ring-purple-500/30 scale-125 shadow-[0_0_10px_#a855f7]';
+      } else {
+        dot.className = 'snap-dot w-3 h-3 rounded-full transition-all duration-300 bg-purple-900/80 hover:bg-purple-400 border border-purple-500/30';
+      }
+    });
+
+    navBtns.forEach((btn, idx) => {
+      if (idx === currentIndex) {
+        btn.className = 'nav-item-btn px-5 py-2 rounded-full text-xs sm:text-sm font-semibold bg-purple-500/25 text-white border border-purple-400/30 shadow-xs transition-all';
+      } else {
+        btn.className = 'nav-item-btn px-5 py-2 rounded-full text-xs sm:text-sm font-medium text-[#c4b5fd]/80 hover:text-white transition-all';
+      }
+    });
+  }, { passive: true });
+
+  // Story Carousel Controller with Scroll Interception
+  const track = document.getElementById('stories-track');
+  const counter = document.getElementById('review-counter');
+  const ratingsSection = document.getElementById('sec-5');
+
+  function updateStorySlide(index) {
+    if (index < 0) index = 0;
+    if (index >= totalStorySlides) index = totalStorySlides - 1;
+    currentStorySlide = index;
+
+    if (track) {
+      track.style.transform = `translateX(-${index * 100}%)`;
+    }
+    if (counter) {
+      const startRev = index * 2 + 1;
+      const endRev = Math.min((index + 1) * 2, 6);
+      counter.textContent = `Set ${index + 1} of ${totalStorySlides} (Reviews ${startRev}-${endRev} of 6)`;
+    }
+
+    for (let i = 0; i < totalStorySlides; i++) {
+      const dot = document.getElementById(`dot-${i}`);
+      if (dot) {
+        if (i === index) {
+          dot.className = 'h-2.5 rounded-full transition-all duration-300 w-7 bg-purple-400 shadow-[0_0_8px_#a855f7]';
+        } else {
+          dot.className = 'h-2.5 rounded-full transition-all duration-300 w-2.5 bg-purple-900/80 hover:bg-purple-400 border border-purple-500/30';
+        }
+      }
+    }
+  }
+
+  function nextStory() {
+    if (currentStorySlide < totalStorySlides - 1) {
+      updateStorySlide(currentStorySlide + 1);
+    } else {
+      updateStorySlide(0);
+    }
+  }
+
+  function prevStory() {
+    if (currentStorySlide > 0) {
+      updateStorySlide(currentStorySlide - 1);
+    } else {
+      updateStorySlide(totalStorySlides - 1);
+    }
+  }
+
+  function jumpToStory(index) {
+    updateStorySlide(index);
+  }
+
+  // Symmetric Wheel / Scroll Interception inside Ratings Section (Sec-5)
+  let lastWheelTime = 0;
+  const WHEEL_COOLDOWN = 350;
+
+  function handleRatingsWheel(e) {
+    const isAtLastSection = Math.abs(scroller.scrollTop - (scroller.scrollHeight - scroller.clientHeight)) < 30 ||
+                            Math.round(scroller.scrollTop / window.innerHeight) >= 4;
+
+    if (!isAtLastSection) return;
+
+    const delta = e.deltaY;
+    const now = performance.now();
+
+    if (delta > 15) {
+      if (currentStorySlide < totalStorySlides - 1) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (now - lastWheelTime > WHEEL_COOLDOWN) {
+          lastWheelTime = now;
+          updateStorySlide(currentStorySlide + 1);
+        }
+      } else {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    } 
+    else if (delta < -15) {
+      if (currentStorySlide > 0) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (now - lastWheelTime > WHEEL_COOLDOWN) {
+          lastWheelTime = now;
+          updateStorySlide(currentStorySlide - 1);
+        }
+      }
+    }
+  }
+
+  if (ratingsSection) {
+    ratingsSection.addEventListener('wheel', handleRatingsWheel, { passive: false });
+  }
+
+  // Touch Swipe Interception for mobile/tablet inside ratings section
+  let touchStartY = 0;
+  let touchStartX = 0;
+  let lastTouchTime = 0;
+  const TOUCH_COOLDOWN = 350;
+
+  if (ratingsSection) {
+    ratingsSection.addEventListener('touchstart', (e) => {
+      touchStartY = e.touches[0].clientY;
+      touchStartX = e.touches[0].clientX;
+    }, { passive: true });
+
+    ratingsSection.addEventListener('touchmove', (e) => {
+      const isAtLastSection = Math.abs(scroller.scrollTop - (scroller.scrollHeight - scroller.clientHeight)) < 30 ||
+                              Math.round(scroller.scrollTop / window.innerHeight) >= 4;
+      if (!isAtLastSection) return;
+
+      const touchEndY = e.touches[0].clientY;
+      const touchEndX = e.touches[0].clientX;
+      const diffY = touchStartY - touchEndY;
+      const diffX = touchStartX - touchEndX;
+      const now = performance.now();
+
+      if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 35) {
+        if (now - lastTouchTime > TOUCH_COOLDOWN) {
+          lastTouchTime = now;
+          if (diffX > 0 && currentStorySlide < totalStorySlides - 1) {
+            updateStorySlide(currentStorySlide + 1);
+          } else if (diffX < 0 && currentStorySlide > 0) {
+            updateStorySlide(currentStorySlide - 1);
+          }
+          touchStartX = touchEndX;
+        }
+      } 
+      else if (Math.abs(diffY) > 30) {
+        if (diffY > 0) {
+          if (currentStorySlide < totalStorySlides - 1) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (now - lastTouchTime > TOUCH_COOLDOWN) {
+              lastTouchTime = now;
+              updateStorySlide(currentStorySlide + 1);
+              touchStartY = touchEndY;
+            }
+          } else {
+            e.preventDefault();
+            e.stopPropagation();
+          }
+        } 
+        else if (diffY < 0) {
+          if (currentStorySlide > 0) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (now - lastTouchTime > TOUCH_COOLDOWN) {
+              lastTouchTime = now;
+              updateStorySlide(currentStorySlide - 1);
+              touchStartY = touchEndY;
+            }
+          }
+        }
+      }
+    }, { passive: false });
+  }
+
+  // FAQ Accordion Handler
+  function toggleFaq(index) {
+    const content = document.getElementById('faq-content-' + index);
+    const icon = document.getElementById('faq-icon-' + index);
+    if (!content || !icon) return;
+
+    const isClosed = content.classList.contains('hidden');
+    
+    for (let i = 1; i <= 3; i++) {
+      const otherContent = document.getElementById('faq-content-' + i);
+      const otherIcon = document.getElementById('faq-icon-' + i);
+      if (otherContent && otherIcon && i !== index) {
+        otherContent.classList.add('hidden');
+        otherIcon.style.transform = 'rotate(0deg)';
+      }
+    }
+
+    if (isClosed) {
+      content.classList.remove('hidden');
+      icon.style.transform = 'rotate(180deg)';
+    } else {
+      content.classList.add('hidden');
+      icon.style.transform = 'rotate(0deg)';
+    }
+  }
+
+  // ==================== INTERACTIVE DEEPFAKE DETECTOR ENGINE ====================
+  let detectorRunning = false;
+  let detectorCompleted = false;
+
+  function runDetectorDemo() {
+    const btn = document.getElementById('run-detector-btn');
+    const btnText = document.getElementById('detector-btn-text');
+    const btnIcon = document.getElementById('detector-btn-icon');
+    const statusText = document.getElementById('detector-status');
+    const statusInd = document.getElementById('status-indicator');
+    const cards = document.querySelectorAll('.demo-card');
+
+    if (!btn || !statusText || detectorRunning) return;
+
+    // If already run and completed, reset everything back
+    if (detectorCompleted) {
+      resetDetector();
+      return;
+    }
+
+    detectorRunning = true;
+    btn.disabled = true;
+    btnIcon.textContent = 'progress_activity';
+    btnIcon.classList.add('animate-spin');
+    btnText.textContent = 'Scanning 6 images...';
+
+    statusInd.className = 'w-2 h-2 rounded-full bg-purple-400 animate-ping';
+    statusText.textContent = 'Initializing neural model in browser WebAssembly...';
+    statusText.className = 'text-xs sm:text-sm text-purple-200 font-semibold animate-pulse';
+
+    // Activate laser scan line and scan overlay on each card
+    cards.forEach((card) => {
+      // close details if any open
+      closeAllDetails();
+      const overlay = card.querySelector('.scan-overlay');
+      const laser = card.querySelector('.laser-line');
+      const tag = card.querySelector('.result-tag');
+      
+      card.classList.remove('ring-2', 'ring-purple-400/90', 'ring-emerald-400/90', 'shadow-[0_0_25px_rgba(192,132,252,0.4)]', 'shadow-[0_0_25px_rgba(52,211,153,0.3)]');
+      if (tag) {
+        tag.classList.add('hidden');
+        tag.classList.remove('animate-badge-pop');
+      }
+      if (overlay) overlay.style.opacity = '1';
+      if (laser) {
+        laser.classList.remove('hidden');
+        laser.classList.add('animate-scanline');
+      }
+    });
+
+    const scanSteps = [
+      { text: 'Scanning 1/6: Analyzing facial artifact matrix...', delay: 220 },
+      { text: 'Scanning 2/6: Extracting light diffusion vectors...', delay: 480 },
+      { text: 'Scanning 3/6: Evaluating landscape cloud boundaries...', delay: 720 },
+      { text: 'Scanning 4/6: Verifying camera CMOS sensor noise...', delay: 960 },
+      { text: 'Scanning 5/6: Inspecting produce optical specular highlights...', delay: 1200 },
+      { text: 'Scanning 6/6: Verifying authentic photon grain...', delay: 1440 },
+    ];
+
+    scanSteps.forEach(step => {
+      setTimeout(() => {
+        if (detectorRunning) {
+          statusText.textContent = step.text;
+        }
+      }, step.delay);
+    });
+
+    // Sequential verdicts with 200ms realistic stagger
+    cards.forEach((card, index) => {
+      const revealDelay = 600 + index * 220;
+      setTimeout(() => {
+        const overlay = card.querySelector('.scan-overlay');
+        const laser = card.querySelector('.laser-line');
+        const tag = card.querySelector('.result-tag');
+        const isSynthetic = card.getAttribute('data-synthetic') === 'true';
+        const confidence = card.getAttribute('data-confidence') || '98%';
+
+        if (overlay) overlay.style.opacity = '0';
+        if (laser) {
+          laser.classList.remove('animate-scanline');
+          laser.classList.add('hidden');
+        }
+
+        if (tag) {
+          tag.classList.remove('hidden');
+          tag.classList.add('animate-badge-pop');
+          
+          if (isSynthetic) {
+            tag.innerHTML = `<span class="inline-flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse"></span>AI SYNTHETIC â€¢ <span class="font-mono text-[9px] sm:text-[10px] opacity-90">${confidence}</span></span>`;
+            tag.className = 'result-tag absolute top-2 right-2 px-2.5 py-1 rounded-full text-[9px] sm:text-[11px] font-bold uppercase tracking-wider bg-purple-950/95 text-[#f3e8ff] border border-purple-400/70 shadow-[0_0_16px_rgba(168,85,247,0.55)] backdrop-blur-md z-20 animate-badge-pop';
+            card.classList.add('ring-2', 'ring-purple-400/90', 'shadow-[0_0_24px_rgba(168,85,247,0.35)]');
+          } else {
+            tag.innerHTML = `<span class="inline-flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>AUTHENTIC PHOTO</span>`;
+            tag.className = 'result-tag absolute top-2 right-2 px-2.5 py-1 rounded-full text-[9px] sm:text-[11px] font-bold uppercase tracking-wider bg-emerald-950/95 text-emerald-200 border border-emerald-400/70 shadow-[0_0_16px_rgba(52,211,153,0.45)] backdrop-blur-md z-20 animate-badge-pop';
+            card.classList.add('ring-2', 'ring-emerald-400/80', 'shadow-[0_0_24px_rgba(52,211,153,0.25)]');
+          }
+        }
+      }, revealDelay);
+    });
+
+    // Final completion state
+    const totalTime = 600 + (cards.length - 1) * 220 + 200;
+    setTimeout(() => {
+      detectorRunning = false;
+      detectorCompleted = true;
+      btn.disabled = false;
+      btnIcon.classList.remove('animate-spin');
+      btnIcon.textContent = 'restart_alt';
+      btnText.textContent = 'Reset detector';
+
+      statusInd.className = 'w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]';
+      statusText.innerHTML = '<span class="text-white font-bold">Complete in 0.08s</span> â€¢ <span class="text-purple-300 font-semibold">3 AI Synthetic</span> &amp; <span class="text-emerald-300 font-semibold">3 Authentic verified</span>';
+      statusText.classList.remove('animate-pulse');
+    }, totalTime);
+  }
+
+  function resetDetector() {
+    detectorCompleted = false;
+    const btn = document.getElementById('run-detector-btn');
+    const btnText = document.getElementById('detector-btn-text');
+    const btnIcon = document.getElementById('detector-btn-icon');
+    const statusText = document.getElementById('detector-status');
+    const statusInd = document.getElementById('status-indicator');
+    const cards = document.querySelectorAll('.demo-card');
+
+    btnIcon.textContent = 'radar';
+    btnText.textContent = 'Run the detector';
+    statusInd.className = 'w-2 h-2 rounded-full bg-purple-400';
+    statusText.textContent = 'Ready to test 6 samples in tab';
+    statusText.className = 'text-xs sm:text-sm text-purple-200/80 font-medium';
+
+    closeAllDetails();
+
+    cards.forEach((card) => {
+      card.classList.remove('ring-2', 'ring-purple-400/90', 'ring-emerald-400/80', 'shadow-[0_0_24px_rgba(168,85,247,0.35)]', 'shadow-[0_0_24px_rgba(52,211,153,0.25)]');
+      const tag = card.querySelector('.result-tag');
+      const overlay = card.querySelector('.scan-overlay');
+      const laser = card.querySelector('.laser-line');
+      if (tag) {
+        tag.classList.add('hidden');
+        tag.classList.remove('animate-badge-pop');
+      }
+      if (overlay) overlay.style.opacity = '0';
+      if (laser) {
+        laser.classList.remove('animate-scanline');
+        laser.classList.add('hidden');
+      }
+    });
+  }
+
+  function toggleCardDetail(card) {
+    // Only allow detail inspect after scan or user click
+    const overlay = card.querySelector('.detail-overlay');
+    const detailText = card.querySelector('.detail-text');
+    const confText = card.querySelector('.conf-text');
+    if (!overlay) return;
+
+    const isOpen = overlay.classList.contains('opacity-100');
+    if (isOpen) {
+      overlay.classList.remove('opacity-100', 'pointer-events-auto');
+      overlay.classList.add('opacity-0', 'pointer-events-none');
+    } else {
+      closeAllDetails();
+      if (detailText) detailText.textContent = card.getAttribute('data-detail') || 'Model analysis complete.';
+      if (confText) confText.textContent = card.getAttribute('data-confidence') || '98.5%';
+      overlay.classList.remove('opacity-0', 'pointer-events-none');
+      overlay.classList.add('opacity-100', 'pointer-events-auto');
+    }
+  }
+
+  function closeAllDetails() {
+    document.querySelectorAll('.detail-overlay').forEach(el => {
+      el.classList.remove('opacity-100', 'pointer-events-auto');
+      el.classList.add('opacity-0', 'pointer-events-none');
+    });
   }
 </script>
 
-</body>
-</html>
+
+</body></html>

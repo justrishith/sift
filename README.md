@@ -4,7 +4,7 @@ Sift blurs AI-generated images across the web and lets the reader reveal them on
 
 Built for older readers who are being targeted by AI slop and deepfake scam ads.
 
-**Live demo:** https://sift-steel.vercel.app/slop.html#sift-demo
+**Live demo:** https://sift-steel.vercel.app/#sec-demo
 **Download:** https://sift-steel.vercel.app/sift-extension.zip
 
 ---
@@ -47,7 +47,7 @@ extension bundle, so it cannot be extracted from a `.crx`.
 ## Install from the download
 
 1. Download **sift-extension.zip** from the
-   [landing page](https://sift-steel.vercel.app/#install) or
+   [landing page](https://sift-steel.vercel.app/) or
    [directly](https://sift-steel.vercel.app/sift-extension.zip).
 2. Unzip it anywhere you can find again.
 3. Open `chrome://extensions` and turn on **Developer mode**.
@@ -70,17 +70,17 @@ on the Chrome Web Store.
 
 ## Demo script (90 seconds)
 
-1. Open **https://sift-steel.vercel.app/slop.html#sift-demo**
-2. All four images get Sift covers, each with a **blocked by sift** badge.
-3. Click one cover once — it reveals, and the link behind it does **not** open.
+1. Open **https://sift-steel.vercel.app/**
+2. Scroll to **Six pictures. Judge them right here.** (second screen). Three are real
+   photographs and three were generated — before you peek, hit **Run the detector** and
+   watch the scan label them in tab.
+3. Click a cover on any page — it reveals, and the link behind it does **not** open.
 4. Click the revealed image again — now it behaves normally.
-5. Open **https://sift-steel.vercel.app/article.html**. Real reporting stays sharp. That is the
-   false-positive check.
-6. Open a **Bing Images** or **Google Images** search for something AI-generated. Pictures the
+5. Open a **Bing Images** or **Google Images** search for something AI-generated. Pictures the
    reader can see get a dashed **sift is checking** cover first, then either fade away (real)
    or upgrade to **blocked by sift** (synthetic).
 
-If the venue Wi-Fi dies, append `#sift-demo` to either Sift URL to force the blur without a
+If the venue Wi-Fi dies, append `#sift-demo` to any Sift URL to force the blur without a
 network call.
 
 ---
@@ -101,10 +101,9 @@ api/
   score-image.js          per-image vision classifier
 site/
   index.html              landing page + install steps
-  slop.html               full advertorial demo that should blur
-  article.html            control page that should stay sharp
+  bloom.onnx              on-device model the extension downloads on first run
+  img/                    demo imagery (local copies)
   sift-extension.zip      downloadable developer build
-  styles.css
 ```
 
 ---
