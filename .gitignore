@@ -21,3 +21,10 @@ vercel-deploy.log
 .env*
 
 tools/train/.env.training
+
+# training data (regenerable via prep_images.py from HF Hub)
+tools/train/data/images/
+
+# training artifacts (built by train_images.py)
+tools/train/artifacts/*.onnx
+tools/train/artifacts/*.pt

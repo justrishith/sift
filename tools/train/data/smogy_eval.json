@@ -1,0 +1,13 @@
+{
+  "model": "onnx-community/SMOGY-Ai-images-detector-ONNX (model_quantized/q8)",
+  "n": 480,
+  "accuracy": 0.5208333333333334,
+  "precision": 0.5106837606837606,
+  "recall": 0.9958333333333333,
+  "tp": 239,
+  "fp": 229,
+  "tn": 11,
+  "fn": 1,
+  "latency_ms_median": 363.448399995832,
+  "latency_ms_p90": 424.95337999935145
+}

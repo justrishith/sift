@@ -1,0 +1,21 @@
+{
+  "model": "gemini-3.5-flash-lite",
+  "results": [
+    {
+      "class": "real",
+      "scored": 60,
+      "fails": 0,
+      "agreement": 0.9666666666666667,
+      "teacher_flagged": 2,
+      "teacher_kept": 58
+    },
+    {
+      "class": "synthetic",
+      "scored": 60,
+      "fails": 0,
+      "agreement": 0.7666666666666667,
+      "teacher_flagged": 46,
+      "teacher_kept": 14
+    }
+  ]
+}

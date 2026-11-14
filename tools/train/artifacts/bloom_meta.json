@@ -1,0 +1,8 @@
+{
+  "side": 192,
+  "classes": [
+    "real",
+    "synthetic"
+  ],
+  "normalization": "imagenet"
+}

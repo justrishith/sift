@@ -1,0 +1,27 @@
+{
+  "backbone": "mobilenet_v3_small (ImageNet1K_V1 transfer)",
+  "input_side": 192,
+  "epochs": 4,
+  "train_images": 3520,
+  "val_images": 480,
+  "classes": {
+    "real": 0,
+    "synthetic": 1
+  },
+  "onnx_fp32": {
+    "accuracy": 0.9854166666666667,
+    "precision": 0.983402489626556,
+    "recall": 0.9875,
+    "f1": 0.9854469854469855
+  },
+  "student_int8": {
+    "accuracy": 0.5291666666666667,
+    "precision": 0.5150214592274678,
+    "recall": 1.0,
+    "f1": 0.6798866855524079
+  },
+  "latency_ms_median": 31.7396499995084,
+  "latency_ms_p90": 39.81176000015694,
+  "model_size_mb": 1.69,
+  "model_size_fp32_mb": 6.09
+}

@@ -28,6 +28,10 @@ DATA = os.path.join(ROOT, "data", "images")
 ART = os.path.join(ROOT, "artifacts")
 os.makedirs(ART, exist_ok=True)
 
+WEIGHTS = os.path.join(ART, "bloom_weights.pt")
+# SKIP_TRAIN=1 loads the saved checkpoint and only redoes export/quantization.
+SKIP_TRAIN = os.environ.get("SKIP_TRAIN") == "1" and os.path.exists(WEIGHTS)
+
 SIDE = int(os.environ.get("SIDE", "192"))
 BATCH = int(os.environ.get("BATCH", "32"))
 EPOCHS = int(os.environ.get("EPOCHS", "4"))
@@ -143,23 +147,32 @@ def eval_val():
     return metrics(np.array(trues), np.array(preds))
 
 
-t0 = time.time()
-for epoch in range(EPOCHS):
-    model.train()
-    running = 0.0
-    for images, labels in train_loader:
-        optimizer.zero_grad()
-        loss = criterion(model(images), labels)
-        loss.backward()
-        optimizer.step()
-        scheduler.step()
-        running += float(loss)
-    m = eval_val()
-    print(f"epoch {epoch + 1}/{EPOCHS} loss {running / max(1, len(train_loader)):.4f} "
-          f"acc {m['accuracy']:.3f} f1 {m['f1']:.3f}  ({time.time() - t0:.0f}s)")
+if SKIP_TRAIN:
+    model.load_state_dict(torch.load(WEIGHTS, map_location="cpu"))
+    print("loaded checkpoint; skipping training")
+else:
+    t0 = time.time()
+    for epoch in range(EPOCHS):
+        model.train()
+        running = 0.0
+        for images, labels in train_loader:
+            optimizer.zero_grad()
+            loss = criterion(model(images), labels)
+            loss.backward()
+            optimizer.step()
+            scheduler.step()
+            running += float(loss.detach())
+        m = eval_val()
+        print(f"epoch {epoch + 1}/{EPOCHS} loss {running / max(1, len(train_loader)):.4f} "
+              f"acc {m['accuracy']:.3f} f1 {m['f1']:.3f}  ({time.time() - t0:.0f}s)")
+    torch.save(model.state_dict(), WEIGHTS)
+    print("training done in", round(time.time() - t0), "s")
 
-print("training done in", round(time.time() - t0), "s")
-
+# clean leftovers from any previous (possibly external-data) export
+for stale in ["bloom.onnx", "bloom.onnx.data", "bloom_int8.onnx"]:
+    p = os.path.join(ART, stale)
+    if os.path.exists(p):
+        os.remove(p)
 # ---------------------------------------------------------------- export ONNX
 
 onnx_path = os.path.join(ART, "bloom.onnx")
@@ -173,6 +186,7 @@ torch.onnx.export(
     output_names=["logits"],
     dynamic_axes={"pixels": {0: "batch"}, "logits": {0: "batch"}},
     opset_version=14,
+    dynamo=False,  # legacy TorchScript exporter: inline weights, quantizer-safe
 )
 print("exported", onnx_path, round(os.path.getsize(onnx_path) / 1e6, 2), "MB")
 
@@ -182,7 +196,6 @@ from onnxruntime.quantization import QuantType, quantize_dynamic
 
 int8_path = os.path.join(ART, "bloom_int8.onnx")
 quantize_dynamic(onnx_path, int8_path, weight_type=QuantType.QInt8)
-os.remove(onnx_path)
 print("quantized", int8_path, round(os.path.getsize(int8_path) / 1e6, 2), "MB")
 
 import onnxruntime as ort
@@ -195,27 +208,43 @@ mean = np.array([0.485, 0.456, 0.406], dtype=np.float32).reshape(1, 3, 1, 1)
 std = np.array([0.229, 0.224, 0.225], dtype=np.float32).reshape(1, 3, 1, 1)
 
 
-def ort_predict_paths(paths):
-    preds = []
-    for path in paths:
-        img = Image.open(path).convert("RGB")
-        side = min(img.size)
-        left, top = (img.size[0] - side) // 2, (img.size[1] - side) // 2
-        img = img.crop((left, top, left + side, top + side)).resize((SIDE, SIDE), Image.LANCZOS)
-        arr = (np.asarray(img, dtype=np.float32) / 255.0).transpose(2, 0, 1)[None]
-        arr = (arr - mean) / std
-        logits, = session.run(None, {"pixels": arr})
-        preds.append(int(logits.argmax(axis=-1)[0]))
-    return np.array(preds)
+def ort_eval(path):
+    so = ort.SessionOptions()
+    so.intra_op_num_threads = 2
+    s = ort.InferenceSession(path, so, providers=["CPUExecutionProvider"])
+
+    def predict(paths):
+        preds = []
+        for p in paths:
+            img = Image.open(p).convert("RGB")
+            side = min(img.size)
+            left, top = (img.size[0] - side) // 2, (img.size[1] - side) // 2
+            img = img.crop((left, top, left + side, top + side)).resize((SIDE, SIDE), Image.LANCZOS)
+            arr = (np.asarray(img, dtype=np.float32) / 255.0).transpose(2, 0, 1)[None]
+            arr = (arr - mean) / std
+            logits, = s.run(None, {"pixels": arr})
+            preds.append(int(logits.argmax(axis=-1)[0]))
+        return np.array(preds)
+
+    return metrics(val_trues, predict(val_paths))
 
 
-ort_metrics = metrics(val_trues, ort_predict_paths(val_paths))
+ort_fp32_metrics = ort_eval(onnx_path)
+print("fp32 onnx val:", json.dumps(ort_fp32_metrics))
+ort_metrics = ort_eval(int8_path)
 print("int8 onnx val:", json.dumps(ort_metrics))
 
 lat = []
+lat_session = ort.InferenceSession(int8_path, ort.SessionOptions(), providers=["CPUExecutionProvider"])
 for path in val_paths[:20]:
+    img = Image.open(path).convert("RGB")
+    side = min(img.size)
+    left, top = (img.size[0] - side) // 2, (img.size[1] - side) // 2
+    img = img.crop((left, top, left + side, top + side)).resize((SIDE, SIDE), Image.LANCZOS)
+    arr = (np.asarray(img, dtype=np.float32) / 255.0).transpose(2, 0, 1)[None]
+    arr = (arr - mean) / std
     start = time.perf_counter()
-    ort_predict_paths([path])
+    lat_session.run(None, {"pixels": arr})
     lat.append((time.perf_counter() - start) * 1000)
 
 report = {
@@ -225,10 +254,12 @@ report = {
     "train_images": len(train_subset),
     "val_images": len(val_paths),
     "classes": {"real": 0, "synthetic": 1},
+    "onnx_fp32": ort_fp32_metrics,
     "student_int8": ort_metrics,
     "latency_ms_median": float(statistics.median(lat)),
     "latency_ms_p90": float(np.percentile(lat, 90)),
     "model_size_mb": round(os.path.getsize(int8_path) / 1e6, 2),
+    "model_size_fp32_mb": round(os.path.getsize(onnx_path) / 1e6, 2),
 }
 with open(os.path.join(ART, "metrics_bloom.json"), "w", encoding="utf-8") as f:
     json.dump(report, f, indent=2)

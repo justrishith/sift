@@ -139,3 +139,124 @@ market, Sprout ships label-only and never auto-hides.
 | 0.1.0 | First distilled text student (MiniLM-class), EN, label-only |
 | 0.2.0 | Calibrated thresholds from L4 corrections; auto-hide on Tier-2 sites |
 | 0.3.0 | Sift Bloom: distilled image gate, correction-data dependent |
+
+---
+
+# Model Card — Sift Bloom
+
+**A small, local, on-device image classifier that runs in the browser and scores images the same way Sift's remote endpoint does.**
+
+---
+
+## Model details
+
+| Field | Value |
+|---|---|
+| Name | **Sift Bloom** (`sift-bloom`) |
+| Version | 0.1.0 |
+| Developer | Sift (justrishith/sift) |
+| Type | Image classifier, MobileNetV3-Small transfer-learned (ImageNet1K_V1 backbone → binary real/synthetic head) |
+| Format | ONNX fp32 (`bloom.onnx`, 6.09 MB) |
+| Input | 192 × 192 center-cropped square JPEG, ImageNet normalization |
+| Runtime | ONNX Runtime Web (WASM), inside the MV3 extension |
+| Distribution | Lazy download from sift-steel.vercel.app on first enable; cached in OPFS. Never bundled with the extension — model updates ship independently. |
+| Teacher | Gemini (`gemini-3.5-flash-lite`), via the deployed `/api/score-image` prompt |
+
+### Name rationale
+
+Sift's brand is a flower. **Bloom** is the image counterpart to Sprout (text): it opens on the image the user is about to see and decides, before anything is shown, whether it's worth blurring.
+
+---
+
+## Intended use
+
+Bloom classifies an image as `real` (0) or `synthetic` (1 — AI-generated photograph). It runs **in the browser, on-device**. No image pixels leave the user's machine once Bloom is active; the remote Gemini call stays live as the fallback and continuous teacher.
+
+**Decision rule (mirrors the deployed `/api/score-image` blur rule):**
+
+- `ai >= 0.7 && confidence !== "low"` → blur
+- `ai >= 0.85` → blur (even at low confidence)
+- otherwise → leave alone
+
+The model outputs logits; the extension converts them to a 0–1 `ai` probability via softmax and applies the rule above.
+
+**Out of scope, deliberately:**
+
+- Text/AI-sloped article classification (that's Sift Sprout)
+- Detecting "a human used AI to edit this" — Bloom flags AI-*generated* photographs, not AI-assisted edits
+- Non-photorealistic classes (illustrations, memes, screenshots, diagrams) — scored low by design, matching the production prompt
+
+---
+
+## Training data
+
+| Class | Count | Source |
+|---|---|---|
+| Real | 2,000 | `Parveshiiii/AI-vs-Real` (label `1 = Real`, ~half) + `ethz/food101` natural photos (~half) |
+| Synthetic | 2,000 | `Parveshiiii/AI-vs-Real` (label `0 = AI-generated`) |
+
+All images center-cropped to square, saved as 192 × 192 JPEG (quality 85). No resampling between classes. MIT-licensed sources; credit: Parvesh Rawal — AI-vs-Real Dataset (2025).
+
+The labeled dataset — not the model — is the moat; correction data from the one-tap reveal feeds the next round.
+
+---
+
+## Metrics (from `tools/train/artifacts/metrics_bloom.json`)
+
+Val set: 480 images (240 real / 240 synthetic), held-out 12% split.
+
+### Student (on-device model)
+
+| Metric | Value |
+|---|---|
+| Accuracy (fp32 ONNX) | **98.5%** |
+| Precision (fp32 ONNX) | 0.983 |
+| Recall (fp32 ONNX) | 0.988 |
+| F1 (fp32 ONNX) | 0.985 |
+| Median latency (CPU) | 31 ms |
+| p90 latency (CPU) | 37 ms |
+| Model size (fp32) | 6.09 MB |
+
+### Teacher agreement (quality gate)
+
+Ran the **verbatim production `/api/score-image` prompt** over 120 val images (60/60) through `gemini-3.5-flash-lite` at 14 RPM:
+
+| Class | Teacher agreement | Teacher blur decision |
+|---|---|---|
+| Real (60) | 96.7% | 58 kept, 2 false positives |
+| Synthetic (60) | 76.7% | 46 flagged, 14 kept |
+| **Overall** | **86.7%** | — |
+
+The synthetic agreement is below the real side because the production prompt is deliberately conservative ("be conservative... score low for illustrations"), so it under-flags some AI images — the same trade-off the deployed endpoint makes.
+
+### Known issue (deferred)
+
+Dynamic int8 quantization (`quantize_dynamic`) regresses this model to chance (~53% acc, all-positive) — a known failure mode with MobileNetV3's hardswish under the ORT quantizer. v0.1.0 ships **fp32 ONNX**; int8 is a follow-up once a working calibration recipe exists. fp32 at 6.09 MB is still well within the lazy-download budget.
+
+---
+
+## Privacy & ethics
+
+- **On-device by design.** With Bloom active, image pixels never leave the browser. Remote scoring is fallback only.
+- **Plain language.** Badges say "looks AI-generated", never "is fake"; no confidence percentages are shown to users.
+- **Reversible.** Every cover has a reveal path and a correction path; corrections feed the next training round.
+- **Consent.** Correction-data contribution is opt-in and anonymized; the carer consents during setup.
+
+---
+
+## Honest limitations
+
+- A local model cannot see what it was not trained on. Decay against new generators is the failure mode; the remote teacher stays live so the corpus keeps growing.
+- Bloom scores photographs. Illustrations, diagrams, memes, and text-heavy images are scored low by design — an AI-generated infographic may pass through.
+- Sift still fails open: no verdict means no blur.
+
+---
+
+## Changelog
+
+| Version | Contents |
+|---|---|
+| 0.1.0 | MobileNetV3-Small transfer-learned on Parveshiiii/AI-vs-Real (2k+2k, 192px), fp32 ONNX, teacher-agreement gate, lazy OPFS download |
+| 0.2.0 | Working int8 quantization (if a stable recipe lands); calibrated thresholds from correction data |
+| 0.3.0 | Cross-generator adversarial set; out-of-distribution check via Gemini-generated synthetic images |
+
