@@ -14,7 +14,11 @@
  * itself needs no chrome.* APIs.
  *
  * Input tensor name: "pixels" [1, 3, 192, 192], ImageNet normalization.
- * Output: "logits" [2] -> softmax -> P(synthetic) = class 1 = ai.
+ * Output: "logits" [2] -> softmax. The shipped model's convention is
+ *   class 0 = synthetic, class 1 = real   (verified against the live
+ *   sift-steel.vercel.app/bloom.onnx on GAN faces and real photos).
+ * So ai = P(class 0). (The earlier class-1-synthetic mapping was inverted
+ * and made every AI image read as "real".)
  */
 
 const DB_NAME = "sift-bloom";
@@ -152,7 +156,7 @@ self.onmessage = async (e) => {
       const m = Math.max(logits[0], logits[1]);
       const e0 = Math.exp(logits[0] - m);
       const e1 = Math.exp(logits[1] - m);
-      const ai = e1 / (e0 + e1); // P(class 1 = synthetic)
+      const ai = e0 / (e0 + e1); // P(class 0 = synthetic)
       const confidence = confidenceFromAi(ai);
       self.postMessage({
         type: "result",
